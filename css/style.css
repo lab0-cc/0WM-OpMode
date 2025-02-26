@@ -1,0 +1,57 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: sans-serif;
+}
+.left-panel {
+  width: 400px;
+  height: 100%;
+  border-right: 1px solid #ccc;
+  padding: 0.5em;
+  box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 6px -3px #000;
+  z-index: 10000;
+  text-align: right;
+}
+button, select {
+  padding: 5px 8px;
+  background: #eee;
+  border: 1px solid #0003;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:hover, select:hover {
+  background-color: #f4f4f4;
+}
+button.next {
+  padding-right: 5px;
+  position: relative;
+  margin-right: 10px;
+}
+button.next::after {
+  content: '';
+  width: 21px;
+  height: 21px;
+  display: block;
+  position: absolute;
+  right: -8px;
+  top: 2px;
+  transform: rotate(45deg);
+  border-radius: 5px 3px;
+  border-top: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+  background: linear-gradient(45deg, #0000 14px, #eee 15px);
+}
+button.next:hover::after {
+  background: linear-gradient(45deg, #0000 14px, #f4f4f4 15px);
+}
+select {
+  padding-right: 20px;
+  appearance: none;
+  background: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwb2x5Z29uIHBvaW50cz0iMCwwIDEwLDAgNSw1Ii8+PC9zdmc+Cg==) bottom right / 15px 14px no-repeat, #eee;
+}

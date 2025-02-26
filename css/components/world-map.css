@@ -1,0 +1,84 @@
+:host {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: calc(100% - 400px);
+  height: 100%;
+}
+
+:host > div {
+  height: 100%;
+}
+
+:host .leaflet-marker-pane > .anchor {
+  position: absolute;
+  border-radius: 12px;
+  border: 2px solid #fff;
+  text-align: center;
+  line-height: 20px;
+  font-weight: bold;
+  color: #fff;
+  cursor: move;
+  box-shadow: 0 1px 6px -3px #000;
+  box-sizing: border-box;
+}
+
+:host .leaflet-marker-pane > .anchor:nth-of-type(1) {
+  background: #e11;
+}
+
+:host .leaflet-marker-pane > .anchor:nth-of-type(1)::after {
+  content: "1";
+  display: inline;
+}
+
+:host .leaflet-marker-pane > .anchor:nth-of-type(2) {
+  background: #1b1;
+}
+
+:host .leaflet-marker-pane > .anchor:nth-of-type(2)::after {
+  content: "2";
+  display: inline;
+}
+
+:host .leaflet-marker-pane > .anchor:nth-of-type(3) {
+  background: #11f;
+}
+
+:host .leaflet-marker-pane > .anchor:nth-of-type(3)::after {
+  content: "3";
+  display: inline;
+}
+
+:host .leaflet-control-zoom {
+  border: 1px solid #0003 !important;
+  border-radius: 5px;
+}
+
+:host .leaflet-touch .leaflet-bar a:first-child {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+:host .leaflet-touch .leaflet-bar a:last-child {
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+:host .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+  font-weight: normal !important;
+  font-size: 24px !important;
+  line-height: 26px !important;
+}
+
+:host > select {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 10000;
+  background-color: #fffe;
+}
+
+:host > select:hover {
+  background-color: #fff;
+}

@@ -1,0 +1,9 @@
+[submodule "ext/0js"]
+	path = ext/0js
+	url = https://github.com/lab0-cc/0JS
+[submodule "ext/linalg"]
+	path = ext/linalg
+	url = https://github.com/lab0-cc/linalg
+[submodule "ext/leaflet-imageoverlay-rotated"]
+	path = ext/leaflet-imageoverlay-rotated
+	url = https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated.git
