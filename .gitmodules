@@ -7,3 +7,6 @@
 [submodule "ext/leaflet-imageoverlay-rotated"]
 	path = ext/leaflet-imageoverlay-rotated
 	url = https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated.git
+[submodule "ext/context2d"]
+	path = ext/context2d
+	url = https://github.com/lab0-cc/Context2D.git
