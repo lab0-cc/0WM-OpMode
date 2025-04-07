@@ -1,11 +1,11 @@
 // This module implements a floorplan viewer with 3-point georeferencing
 
-import { Point2 } from '/js/linalg.mjs';
-import { Stylable } from '/js/mixins.mjs';
+import { Point2, Vector2 } from '/js/linalg.mjs';
+import { Statusable, Stylable } from '/js/mixins.mjs';
 import { createElement } from '/js/util.mjs';
 
 
-class FloorplanContainer extends Stylable(HTMLElement) {
+class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
     #anchorDrag;
     #anchorDrop;
     #anchorMove;
@@ -14,6 +14,7 @@ class FloorplanContainer extends Stylable(HTMLElement) {
     #img;
     #offsetX;
     #offsetY;
+    #scale;
 
     constructor() {
         super();
@@ -35,22 +36,51 @@ class FloorplanContainer extends Stylable(HTMLElement) {
         }
 
         this.addStylesheet('components/floorplan-container.css');
-        this.#img.addEventListener('load', this.#updateImage.bind(this));
+        this.#img.addEventListener('load', this.#imageLoad.bind(this));
+        window.addEventListener('resize', this.#resize.bind(this));
     }
 
+    connectedCallback() {
+        document.getElementById('place').addEventListener('click', () => {
+            this.setAttribute('status', 0);
+            document.getElementById('unplace').disabled = false;
+        });
+        document.getElementById('unplace').addEventListener('click', () => {
+            this.setAttribute('status', 1);
+            document.getElementById('unplace').disabled = true;
+        });
+    }
+
+    // Load the floorplan
     #loadFloorplan(url) {
         this.#img.src = url;
     }
 
-    getBox() {
-        return this.#img.getBoundingClientRect();
+    // Get the floorplan dimensions
+    getDimensions() {
+        return new Vector2(this.#img.naturalWidth, this.#img.naturalHeight);
     }
 
-    #updateImage() {
-        this.scale = this.#img.naturalWidth / this.getBox().width;
-        this.#resetAnchors();
+    // Update the floorplan scale after a resize or a load event
+    #resize() {
+        this.#scale = this.#img.naturalWidth / this.#img.getBoundingClientRect().width;
+        this.style.setProperty('--scale', this.#scale);
     }
 
+    // Handle image load events
+    #imageLoad() {
+        this.#resize();
+        const fiftyPx = `${50 * this.#scale}px`;
+        const twoHundredPx = `${200 * this.#scale}px`;
+        this.#anchors[0].style.setProperty('--left', fiftyPx);
+        this.#anchors[0].style.setProperty('--top', fiftyPx);
+        this.#anchors[1].style.setProperty('--left', twoHundredPx);
+        this.#anchors[1].style.setProperty('--top', fiftyPx);
+        this.#anchors[2].style.setProperty('--left', fiftyPx);
+        this.#anchors[2].style.setProperty('--top', twoHundredPx);
+    }
+
+    // Handle mousedown events on anchors
     #_anchorDrag(e) {
         e.preventDefault();
         this.#currentlyDragging = e.target;
@@ -60,41 +90,37 @@ class FloorplanContainer extends Stylable(HTMLElement) {
         document.addEventListener('mouseup', this.#anchorDrop);
     }
 
+    // Handle mousemove events on anchors
     #_anchorMove(e) {
-        const rect = this.getBox();
+        const rect = this.#img.getBoundingClientRect();
         const x = Math.min(rect.width, Math.max(0, e.clientX - rect.left - this.#offsetX));
         const y = Math.min(rect.height, Math.max(0, e.clientY - rect.top - this.#offsetY));
 
-        this.#currentlyDragging.style.left = `${x}px`;
-        this.#currentlyDragging.style.top = `${y}px`;
+        this.#currentlyDragging.style.setProperty('--left', `${x * this.#scale}px`);
+        this.#currentlyDragging.style.setProperty('--top', `${y * this.#scale}px`);
 
         document.worldMap.updateOverlay();
     }
 
+    // Handle mouseup events on anchors
     #_anchorDrop(e) {
         this.#currentlyDragging = null;
         document.removeEventListener('mousemove', this.#anchorMove);
         document.removeEventListener('mouseup', this.#anchorDrop);
     }
 
-    #resetAnchors() {
-        this.#anchors[0].style.left = '50px';
-        this.#anchors[0].style.top = '50px';
-        this.#anchors[1].style.left = '200px';
-        this.#anchors[1].style.top = '50px';
-        this.#anchors[2].style.left = '50px';
-        this.#anchors[2].style.top = '200px';
-    }
-
+    // Get the positioned anchors
     getAnchors() {
-        return this.#anchors.map(e => new Point2(parseInt(e.style.left), parseInt(e.style.top)));
+        return this.#anchors.map(e => new Point2(parseInt(e.style.getPropertyValue('--left')),
+                                                 parseInt(e.style.getPropertyValue('--top'))));
     }
 
     static get observedAttributes() {
-        return ['src'];
+        return super.observedAttributes.concat(['src']);
     }
 
     attributeChangedCallback(name, old, current) {
+        super.attributeChangedCallback(name, old, current);
         switch (name) {
             case 'src':
                 this.#loadFloorplan(current);

@@ -23,6 +23,7 @@ class WorldMap extends Stylable(HTMLElement) {
 
         const mapDiv = createElement('div');
         this.appendToShadow(mapDiv);
+        // Show Brest, FR, by default
         this.#map = L.map(mapDiv, { center: [48.383313, -4.497187], zoom: 14 });
 
         this.#currentLayer = L.tileLayer(LAYERS.osm.layer, {
@@ -53,10 +54,20 @@ class WorldMap extends Stylable(HTMLElement) {
 
         this.#overlay = null;
         new ResizeObserver(() => this.#map.invalidateSize()).observe(mapDiv);
-        document.getElementById('place').addEventListener('click', this.#placeFloorplan.bind(this));
-        document.worldMap = this;
     }
 
+    connectedCallback() {
+        document.worldMap = this;
+        document.getElementById('place').addEventListener('click', this.#placeFloorplan.bind(this));
+        document.getElementById('unplace').addEventListener('click', () => {
+            this.#overlay.remove();
+            this.#overlay = null;
+            this.#anchors.forEach(e => e.remove());
+            this.#anchors = null;
+        });
+    }
+
+    // Initialize the anchors on the map
     #initAnchors() {
         this.#anchors = [];
         for (let i = 0; i < 3; i++) {
@@ -69,6 +80,7 @@ class WorldMap extends Stylable(HTMLElement) {
         }
     }
 
+    // Place the floorplan on the map
     #placeFloorplan() {
         if (this.#anchors === null)
             this.#initAnchors();
@@ -120,6 +132,7 @@ class WorldMap extends Stylable(HTMLElement) {
         this.updateOverlay();
     }
 
+    // Update the overlay with the proper viewport and transformation
     updateOverlay() {
         if (this.#anchors === null)
             return;
@@ -135,11 +148,11 @@ class WorldMap extends Stylable(HTMLElement) {
         if (transformation === null) {
             return;
         }
-        const rect = document.floorplanContainer.getBox();
+        const rect = document.floorplanContainer.getDimensions();
         const corners = [
             new Point2(0, 0),
-            new Point2(rect.width, 0),
-            new Point2(0, rect.height),
+            new Point2(rect.x, 0),
+            new Point2(0, rect.y),
         ].map(p => {
             const { x, y } = transformation[0].appliedTo(p).plus(transformation[1]);
             return L.latLng(y, x);
@@ -155,6 +168,7 @@ class WorldMap extends Stylable(HTMLElement) {
         }
     }
 
+    // Compute the transformation matrix
     #computeTransformation(src, dst) {
         const srcV1 = src[0].to(src[1]);
         const srcV2 = src[0].to(src[2]);
