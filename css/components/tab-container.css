@@ -1,0 +1,75 @@
+:host {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 36px;
+  width: 100%;
+  background: #eee;
+  z-index: 10001;
+  border-bottom: 1px solid #ccc;
+  box-sizing: border-box;
+  padding: 0 5px;
+  font-size: 0.9rem;
+  line-height: 36px;
+}
+:host > .tab {
+  display: inline-block;
+  height: 100%;
+  padding: 0 10px;
+  box-sizing: border-box;
+  color: unset;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+}
+:host > .tab.selected {
+  background: #fff;
+  height: calc(100% + 1px);
+  border-left: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+  pointer-events: none;
+  margin: 0 -1px;
+  z-index: 1;
+}
+:host > .tab:not(.selected):hover {
+  background: #f8f8f8;
+}
+:host > button {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 0 6px;
+  top: 3px;
+  height: 27px;
+  position: relative;
+  cursor: pointer;
+}
+:host > button:disabled {
+  pointer-events: none;
+  background: #0000;
+  color: #aaa;
+  border-color: #ccc;
+}
+:host > button.right {
+  float: right;
+  margin-left: 8px;
+}
+:host > button.submit:enabled {
+  background: #3a4;
+  color: #fff;
+  border-color: #777;
+}
+:host > .tab.warning::before, :host > .tab.error::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  margin-right: 6px;
+  border-radius: 5px;
+}
+:host > .tab.warning::before {
+  background: #f81;
+}
+:host > .tab.error::before {
+  background: #f11;
+}
