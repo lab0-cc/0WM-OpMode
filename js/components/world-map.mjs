@@ -1,7 +1,7 @@
 // This module implements a map viewer allowing to position floor plans
 
 import { LAYERS } from '/js/components/datasources.mjs';
-import { Matrix2, Point2, Vector2 } from '/js/linalg.mjs';
+import { BoundingBox2, Matrix2, Point2, Vector2 } from '/js/linalg.mjs';
 import { Stylable } from '/js/mixins.mjs';
 import { createElement } from '/js/util.mjs';
 import '/js/leaflet.js';
@@ -73,30 +73,48 @@ class WorldMap extends Stylable(HTMLElement) {
         if (this.#anchors === null)
             this.#initAnchors();
 
+        const rect = this.getBoundingClientRect();
         const mapRect = this.#map.getBounds();
-        const boxNE = new Point2(mapRect.getEast(), mapRect.getNorth());
-        const boxSW = new Point2(mapRect.getWest(), mapRect.getSouth());
-        const mapWidth = boxNE.x - boxSW.x;
-        const mapHeight = boxNE.y - boxSW.y;
-        if (mapWidth > mapHeight) {
-            const halfDelta = (mapWidth - mapHeight) / 2;
-            boxNE.x -= halfDelta;
-            boxSW.x += halfDelta;
+        const box = new BoundingBox2(new Point2(mapRect.getWest(), mapRect.getSouth()),
+                                     new Point2(mapRect.getEast(), mapRect.getNorth()));
+
+        // Here, we want to make it so that our box is a square in the user viewport. WGS84 can be a
+        // bit tricky, as the box/viewport mapping is not constant across latitudes, so we have to
+        // take that into account. We also downscale the viewport by 10%, to display a margin.
+        let halfDeltaX, halfDeltaY;
+        if (rect.width > rect.height) {
+            halfDeltaX = box.width() * (.05 + .45 * (rect.width - rect.height) / rect.width);
+            halfDeltaY = .05 * box.height();
         }
         else {
-            const halfDelta = (mapHeight - mapWidth) / 2;
-            boxNE.y -= halfDelta;
-            boxSW.y += halfDelta;
+            halfDeltaX = .05 * box.width();
+            halfDeltaY = box.height() * (.05 + .45 * (rect.height - rect.width) / rect.height);
+        }
+        box.max.x -= halfDeltaX;
+        box.min.x += halfDeltaX;
+        box.max.y -= halfDeltaY;
+        box.min.y += halfDeltaY;
+
+        // Now that we have a square, we want to crop it so that the box has the same aspect ratio
+        // as the floorplan in the user viewport
+        const fpRect = document.floorplanContainer.getDimensions();
+        if (fpRect.x > fpRect.y) {
+            const halfDelta = box.height() * (fpRect.x - fpRect.y) / fpRect.x / 2;
+            box.max.y -= halfDelta;
+            box.min.y += halfDelta;
+        }
+        else {
+            const halfDelta = box.width() * (fpRect.y - fpRect.x) / fpRect.y / 2;
+            box.max.x -= halfDelta;
+            box.min.x += halfDelta;
         }
 
-        const boxWidth = boxNE.x - boxSW.x;
-        const boxHeight = boxNE.y - boxSW.y;
-        const floorplanRect = document.floorplanContainer.getBox();
+        // We can now properly interpolate the anchors
         const floorplanAnchors = document.floorplanContainer.getAnchors();
         for (let i = 0; i < 3; i++) {
             this.#anchors[i].setLatLng({
-                lng: boxSW.x + .05 * boxWidth + .9 * floorplanAnchors[i].x * boxWidth / floorplanRect.width,
-                lat: boxNE.y - .05 * boxHeight - .9 * floorplanAnchors[i].y * boxHeight / floorplanRect.height
+                lng: box.min.x + floorplanAnchors[i].x * box.width() / fpRect.x,
+                lat: box.max.y - floorplanAnchors[i].y * box.height() / fpRect.y
             });
         }
         this.updateOverlay();
