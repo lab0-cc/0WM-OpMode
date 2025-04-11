@@ -7,8 +7,13 @@ let modal = null;
 let app = null;
 let floorplanContainer = null;
 let floorplanEditor = null;
+let worldMap = null;
+let b64Data = null;
+let progress = null;
+let submitBtn = null;
 const TABS = { edit: 'Floorplan Editor', map: 'Map Editor' };
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/web'];
+const ENDPOINT = 'http://127.0.0.1:8000/api/maps';
 
 
 // Import component modules
@@ -29,10 +34,47 @@ function deleteApp() {
 }
 
 
-// Submit the floorplan data; currently TODO
+// Submit the floorplan data
 function submit() {
-    alert('Not implemented');
-    deleteApp();
+    submitBtn.disabled = true;
+    document.body.classList.add('sending');
+    const anchors = [];
+    const localAnchors = floorplanContainer.toJSON();
+    const globalAnchors = worldMap.toJSON();
+    for (let i = 0; i < localAnchors.length; i++) {
+        const { x, y } = localAnchors[i];
+        const { lng, lat } = globalAnchors[i];
+        anchors.push({ x: x, y: y, lng: lng, lat: lat });
+    }
+    const payload = floorplanEditor.toJSON();
+    payload.anchors = anchors;
+    payload.floorplan.data = b64Data;
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', ENDPOINT);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.upload.addEventListener('progress', e => progress.style.width = `${100 * e.loaded / e.total}%`);
+    xhr.addEventListener('load', () => {
+        resetProgress();
+        if (xhr.status >= 200 && xhr.status < 300) {
+            deleteApp();
+        }
+        else {
+            alert('An error occurred');
+        }
+    });
+    xhr.addEventListener('error', () => {
+        resetProgress();
+        alert('An error occurred');
+    });
+    xhr.send(JSON.stringify(payload));
+}
+
+
+// Reset the sending state
+function resetProgress() {
+    document.body.classList.remove('sending');
+    progress.style.removeProperty('width');
+    submitBtn.disabled = false;
 }
 
 
@@ -42,6 +84,9 @@ function createApp() {
     document.body.appendChild(app);
     const tabContainer = createElement('tab-container');
     app.appendChild(tabContainer);
+    progress = createElement('div', 'progress');
+    app.appendChild(progress);
+    app.appendChild(createElement('div', 'pane mask'));
     const panes = {};
     for (const [target, title] of Object.entries(TABS)) {
         const pane = createElement('div', 'pane', { id: target });
@@ -52,7 +97,7 @@ function createApp() {
     const cancelBtn = createElement('button', 'right', null, 'Cancel');
     cancelBtn.addEventListener('click', deleteApp);
     tabContainer.appendChild(cancelBtn);
-    const submitBtn = createElement('button', 'right submit', { disabled: 'disabled' }, 'Submit');
+    submitBtn = createElement('button', 'right submit', { disabled: 'disabled' }, 'Submit');
     submitBtn.addEventListener('click', submit);
     tabContainer.appendChild(submitBtn);
     floorplanEditor = createElement('floorplan-editor', null, { status: 1 });
@@ -64,7 +109,8 @@ function createApp() {
     panel.appendChild(createElement('button', 'previous', { id: 'unplace', disabled: 'disabled' },
                                     'Remove from the map'));
     panes['map'].appendChild(panel);
-    panes['map'].appendChild(createElement('world-map'));
+    worldMap = createElement('world-map');
+    panes['map'].appendChild(worldMap);
 }
 
 
@@ -75,6 +121,9 @@ function loadFloorplan(e) {
         alert('Invalid file. Please select a supported image type (JPEG, PNG or WebP).')
         return;
     }
+    const reader = new FileReader();
+    reader.addEventListener('load', () => b64Data = reader.result);
+    reader.readAsDataURL(file);
     const url = URL.createObjectURL(file);
     floorplanContainer.setAttribute('src', url);
     floorplanEditor.setAttribute('src', url);

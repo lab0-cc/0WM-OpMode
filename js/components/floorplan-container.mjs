@@ -127,6 +127,11 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
                 break;
         }
     }
+
+    // Return serialized data
+    toJSON() {
+        return this.getAnchors().map(e => e.toJSON());
+    }
 }
 
 

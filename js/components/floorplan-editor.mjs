@@ -698,6 +698,12 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
                                         * (Math.PI/4));
         return source.plus(new Vector2(delta.norm(), 0).rotated(snappedAngle));
     }
+
+    // Return serialized data
+    toJSON() {
+        return { floorplan: { height: this.#img.naturalHeight, width: this.#img.naturalWidth },
+                 shapes: this.#shapes.map(e => e.toJSON()) };
+    }
 }
 
 

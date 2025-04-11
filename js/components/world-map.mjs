@@ -189,6 +189,11 @@ class WorldMap extends Stylable(HTMLElement) {
         const dy = dst[0].y - c * src[0].x - d * src[0].y;
         return [new Matrix2(a, b, c, d), new Vector2(dx, dy)];
     }
+
+    // Return serialized data
+    toJSON() {
+        return this.#anchors.map(e => e.getLatLng());
+    }
 }
 
 
