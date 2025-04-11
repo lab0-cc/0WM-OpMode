@@ -81,9 +81,9 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#statusModified = false;
 
         this.#canvas.addEventListener('contextmenu', this.#rightClick.bind(this));
-        this.#canvas.addEventListener('mousemove', this.#mouseMove.bind(this));
-        this.#canvas.addEventListener('mousedown', this.#mouseDown.bind(this));
-        this.#canvas.addEventListener('mouseup', this.#mouseUp.bind(this));
+        this.#canvas.addEventListener('pointermove', this.#pointerMove.bind(this));
+        this.#canvas.addEventListener('pointerdown', this.#pointerDown.bind(this));
+        this.#canvas.addEventListener('pointerup', this.#pointerUp.bind(this));
         this.#canvas.addEventListener('dblclick', this.#doubleClick.bind(this));
         document.addEventListener('keydown', this.#keyDown.bind(this));
         document.addEventListener('keyup', this.#updateKeys.bind(this));
@@ -106,13 +106,13 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#setDrawingMode('polygon');
     }
 
-    // Handle mousedown events
-    #mouseDown(e) {
+    // Handle pointerdown events
+    #pointerDown(e) {
+        this.#canvas.setPointerCapture(e.pointerId);
+
         // Only handle regular single clicks here
         if (e.button !== 0 | e.detail > 1 | this.#currentShape.length > 0)
             return;
-
-        this.#canvas.setPointerCapture(e.pointerId);
 
         // Clicking a hovered anchor prepares that anchor to be moved
         if (this.#hoveredAnchor !== -1) {
@@ -139,8 +139,8 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#redraw();
     }
 
-    // Handle mousemove events
-    #mouseMove(e) {
+    // Handle pointermove events
+    #pointerMove(e) {
         // Clear any hovered state
         this.#resetHoveredState();
 
@@ -173,13 +173,13 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#redraw();
     }
 
-    // Handle mouseup events
-    #mouseUp(e) {
+    // Handle pointerup events
+    #pointerUp(e) {
+        this.#canvas.releasePointerCapture(e.pointerId);
+
         // Only handle regular clicks here
         if (e.button !== 0)
             return;
-
-        this.#canvas.releasePointerCapture(e.pointerId);
 
         // If a shape is marked for dragging
         if (this.#draggingShape !== null) {
@@ -224,7 +224,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         }
 
         // Recompute states
-        this.#mouseMove(e);
+        this.#pointerMove(e);
     }
 
     // Handle contextmenu events
@@ -265,7 +265,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#ctrlPressed = e.ctrlKey || e.metaKey;
         this.#altPressed = e.altKey;
         if (this.#mouse !== null)
-            this.#mouseMove(e);
+            this.#pointerMove(e);
     }
 
     // Handle keydown events
