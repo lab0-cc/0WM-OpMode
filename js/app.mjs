@@ -11,6 +11,7 @@ let worldMap = null;
 let b64Data = null;
 let progress = null;
 let submitBtn = null;
+let nameInput = null;
 const TABS = { edit: 'Floorplan Editor', map: 'Map Editor' };
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/web'];
 const ENDPOINT = 'http://127.0.0.1:8000/api/maps';
@@ -49,6 +50,7 @@ function submit() {
     const payload = floorplanEditor.toJSON();
     payload.anchors = anchors;
     payload.floorplan.data = b64Data;
+    payload.name = nameInput.value;
     const xhr = new XMLHttpRequest();
     xhr.open('POST', ENDPOINT);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -100,6 +102,12 @@ function createApp() {
     submitBtn = createElement('button', 'right submit', { disabled: 'disabled' }, 'Submit');
     submitBtn.addEventListener('click', submit);
     tabContainer.appendChild(submitBtn);
+    nameInput = createElement('input', 'right', { placeholder: 'Project name',
+                                                  required: 'required' });
+    nameInput.addEventListener('input', () => {
+        nameInput.dispatchEvent(new Event('statuschange', { bubbles: true }));
+    });
+    tabContainer.appendChild(nameInput);
     floorplanEditor = createElement('floorplan-editor', null, { status: 1 });
     panes['edit'].appendChild(floorplanEditor);
     const panel = createElement('div', 'left-panel');

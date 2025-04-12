@@ -6,6 +6,7 @@ import { DynamicShadow, Stylable } from '/js/mixins.mjs';
 class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
     #currentTab;
     #tabs;
+    #inputs;
     #submitBtn;
 
     constructor() {
@@ -13,6 +14,7 @@ class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
         this.addStylesheet('components/tab-container.css');
         this.#currentTab = null;
         this.#tabs = [];
+        this.#inputs = [];
         this.addHandler(e => {
             if (e.classList.contains('tab')) {
                 e.addEventListener('click', () => this.selectTab(e));
@@ -25,9 +27,13 @@ class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
             else if (e.classList.contains('submit')) {
                 this.#submitBtn = e;
             }
+            else if (e instanceof HTMLInputElement) {
+                this.#inputs.push(e);
+            }
         });
 
         document.addEventListener('statuschange', e => this.#refreshPaneState(e.target));
+        this.shadowRoot.addEventListener('statuschange', this.#refreshContainerState.bind(this));
     }
 
     // Select the given tab
@@ -73,7 +79,11 @@ class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
                 tab.ok = true;
         }
 
-        if (this.#tabs.every(e => e.ok))
+        this.#refreshContainerState();
+    }
+
+    #refreshContainerState() {
+        if (this.#tabs.every(e => e.ok) && this.#inputs.every(e => e.checkValidity()))
             this.#submitBtn?.removeAttribute('disabled');
         else
             this.#submitBtn?.setAttribute('disabled', 'disabled');
