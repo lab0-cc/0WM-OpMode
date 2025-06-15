@@ -1,0 +1,14 @@
+:host {
+  width: 100%;
+  height: calc(100% - 46px);
+  display: block;
+  background: #ccc;
+  overflow: hidden;
+  position: absolute;
+  bottom: 0;
+}
+
+:host > canvas {
+  width: 100%;
+  height: 100%;
+}

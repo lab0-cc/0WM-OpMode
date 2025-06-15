@@ -7,12 +7,27 @@ import { createElement } from '/js/util.mjs';
 import '/js/leaflet.js';
 import '/js/leaflet.imageoverlay.rotated.js';
 
+const AVERAGE_EARTH_RADIUS = 6_371_008.771
+const SERVER = 'http://127.0.0.1:8000';
+const ENDPOINT = `${SERVER}/api/maps`;
+
+// Compute a degree cosinus
+function dcos(a) {
+    return Math.cos(a * Math.PI / 180);
+}
+
+// Compute the Haversine distance between two points
+function hav(p1, p2) {
+    return Math.asin(Math.sqrt ((1 - dcos(p2.lat - p1.lat) + dcos(p1.lat) * dcos(p2.lat) *
+                                 (1 - dcos(p2.lng - p1.lng))) / 2)) * 2 * AVERAGE_EARTH_RADIUS;
+}
 
 class WorldMap extends Stylable(HTMLElement) {
     #anchors;
     #currentLayer;
     #map;
     #overlay;
+    #scale;
 
     constructor() {
         super();
@@ -51,9 +66,38 @@ class WorldMap extends Stylable(HTMLElement) {
         });
 
         this.#anchors = null;
+        this.#scale = null;
 
         this.#overlay = null;
         new ResizeObserver(() => this.#map.invalidateSize()).observe(mapDiv);
+
+        fetch(ENDPOINT).then(response => {
+            if (!response.ok)
+                throw new Error(`Failed to load maps (${response.status})`);
+            return response.json();
+        }).then(ids => {
+            ids.forEach(id => {
+                fetch(`${ENDPOINT}/${id}`).then(response => {
+                    if (!response.ok)
+                        throw new Error(`Failed to load map ${id} (${response.status})`);
+                    return response.json();
+                }).then(data => {
+                    const srcAnchors = [];
+                    const dstAnchors = [];
+                    for (const anchor of data.anchors) {
+                        srcAnchors.push(new Point2(anchor.x, anchor.y));
+                        dstAnchors.push(new Point2(anchor.lng, anchor.lat));
+                    }
+                    const srcRect = new Point2(data.width, data.height);
+                    this.updateOverlay(srcAnchors, srcRect, `${SERVER}/${data.path}`, dstAnchors);
+                    this.#overlay = null;
+                }).catch(err => {
+                    alert(err);
+                });
+            });
+        }).catch(err => {
+            alert(err);
+        });
     }
 
     connectedCallback() {
@@ -75,7 +119,10 @@ class WorldMap extends Stylable(HTMLElement) {
                 draggable: true,
                 icon: L.divIcon({ className: 'anchor', iconSize: [24, 24], iconAnchor: [12, 12] })
             }).addTo(this.#map);
-            anchor.on('drag', this.updateOverlay.bind(this));
+            anchor.on('drag', () =>
+              this.updateOverlay(document.floorplanContainer.getAnchors(),
+                                 document.floorplanContainer.getDimensions(),
+                                 document.floorplanContainer.getAttribute('src')));
             this.#anchors.push(anchor);
         }
     }
@@ -129,43 +176,47 @@ class WorldMap extends Stylable(HTMLElement) {
                 lat: box.max.y - floorplanAnchors[i].y * box.height() / fpRect.y
             });
         }
-        this.updateOverlay();
+        this.updateOverlay(floorplanAnchors, fpRect,
+                           document.floorplanContainer.getAttribute('src'));
+    }
+
+    #getDstAnchors() {
+        const dstAnchors = [];
+        for (const anchor of this.#anchors ?? []) {
+            const { lat, lng } = anchor.getLatLng();
+            dstAnchors.push(new Point2(lng, lat));
+        }
+        return dstAnchors;
     }
 
     // Update the overlay with the proper viewport and transformation
-    updateOverlay() {
-        if (this.#anchors === null)
+    updateOverlay(srcAnchors, srcRect, url, dstAnchors = null) {
+        this.#scale = null;
+        const anchors = dstAnchors ?? this.#getDstAnchors();
+        if (anchors.length !== 3)
             return;
 
-        const src = document.floorplanContainer.getAnchors();
-        const dst = [];
-        for (let i=0; i<3; i++) {
-            const { lat, lng } = this.#anchors[i].getLatLng();
-            dst.push(new Point2(lng, lat));
-        }
-
-        const transformation = this.#computeTransformation(src, dst);
+        const transformation = this.#computeTransformation(srcAnchors, anchors);
         if (transformation === null) {
             return;
         }
-        const rect = document.floorplanContainer.getDimensions();
         const corners = [
             new Point2(0, 0),
-            new Point2(rect.x, 0),
-            new Point2(0, rect.y),
+            new Point2(srcRect.x, 0),
+            new Point2(0, srcRect.y),
         ].map(p => {
             const { x, y } = transformation[0].appliedTo(p).plus(transformation[1]);
             return L.latLng(y, x);
         });
 
-        if (this.#overlay === null) {
-            this.#overlay = L.imageOverlay.rotated(
-                document.floorplanContainer.getAttribute('src'), ...corners, { opacity: .7 }
-            ).addTo(this.#map);
-        }
-        else {
+        if (dstAnchors === null)
+            this.#scale = new Vector2(srcRect.x, srcRect.y).norm() / hav(corners[1], corners[2]);
+
+        if (this.#overlay === null)
+            this.#overlay = L.imageOverlay.rotated(url, ...corners,
+                                                   { opacity: .7 }).addTo(this.#map);
+        else
             this.#overlay.reposition(...corners);
-        }
     }
 
     // Compute the transformation matrix
@@ -188,6 +239,11 @@ class WorldMap extends Stylable(HTMLElement) {
         const dx = dst[0].x - a * src[0].x - b * src[0].y;
         const dy = dst[0].y - c * src[0].x - d * src[0].y;
         return [new Matrix2(a, b, c, d), new Vector2(dx, dy)];
+    }
+
+    // Get an approximate pixel/meter scale
+    getScale() {
+        return this.#scale;
     }
 
     // Return serialized data

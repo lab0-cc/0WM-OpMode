@@ -45,6 +45,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
     constructor() {
         super();
 
+        document.floorplanEditor = this;
         this.#img = createElement('img', null);
         this.#img.addEventListener('load', this.#updateViewport.bind(this));
         window.addEventListener('resize', this.#updateViewport.bind(this));
@@ -278,14 +279,20 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
 
     // Update viewport scaling
     #updateViewport() {
+        const ratio = window.devicePixelRatio || 1;
         const rect = this.getBoundingClientRect();
         const toolbarWidth = this.#toolbar.getBoundingClientRect().width;
         this.#scale = Math.max(this.#img.naturalWidth / (rect.width - toolbarWidth),
                                this.#img.naturalHeight / rect.height);
         this.#revScale = 1 / this.#scale;
         this.#magnetism = MAGNETISM * this.#scale;
-        this.#canvas.width = this.#img.naturalWidth * this.#revScale;
-        this.#canvas.height = this.#img.naturalHeight * this.#revScale;
+        const width = this.#img.naturalWidth * this.#revScale;
+        const height = this.#img.naturalHeight * this.#revScale;
+        this.#canvas.width = width * ratio;
+        this.#canvas.height = height * ratio;
+        this.#canvas.style.width = `${width}px`;
+        this.#canvas.style.height = `${height}px`;
+        this.#ctx.scale(new Vector2(ratio, ratio));
         this.#redraw();
     }
 
@@ -699,10 +706,15 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         return source.plus(new Vector2(delta.norm(), 0).rotated(snappedAngle));
     }
 
+    // Return serialized shapes
+    shapes() {
+        return this.#shapes.map(e => e.toJSON());
+    }
+
     // Return serialized data
     toJSON() {
         return { floorplan: { height: this.#img.naturalHeight, width: this.#img.naturalWidth },
-                 shapes: this.#shapes.map(e => e.toJSON()) };
+                 shapes: this.shapes() };
     }
 }
 

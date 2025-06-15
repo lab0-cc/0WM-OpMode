@@ -3,7 +3,7 @@
   display: block;
   height: 100%;
   width: 100%;
-  background: #bbb;
+  background: #ccc;
   overflow: hidden;
 }
 canvas {
@@ -56,6 +56,7 @@ canvas {
 img {
   max-height: 100%;
   max-width: 100%;
-  left: 43px;
+  padding-left: 43px;
+  box-sizing: border-box;
   position: relative;
 }

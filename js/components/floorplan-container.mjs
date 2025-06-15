@@ -51,11 +51,6 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
         });
     }
 
-    // Load the floorplan
-    #loadFloorplan(url) {
-        this.#img.src = url;
-    }
-
     // Get the floorplan dimensions
     getDimensions() {
         return new Vector2(this.#img.naturalWidth, this.#img.naturalHeight);
@@ -99,7 +94,8 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
         this.#currentlyDragging.style.setProperty('--left', `${x * this.#scale}px`);
         this.#currentlyDragging.style.setProperty('--top', `${y * this.#scale}px`);
 
-        document.worldMap.updateOverlay();
+        document.worldMap.updateOverlay(this.getAnchors(), this.getDimensions(),
+                                        this.getAttribute('src'));
     }
 
     // Handle mouseup events on anchors
@@ -123,7 +119,7 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
         super.attributeChangedCallback(name, old, current);
         switch (name) {
             case 'src':
-                this.#loadFloorplan(current);
+                this.#img.src = current;
                 break;
         }
     }

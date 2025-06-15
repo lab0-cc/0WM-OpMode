@@ -7,12 +7,13 @@ let modal = null;
 let app = null;
 let floorplanContainer = null;
 let floorplanEditor = null;
+let floorplanViewer = null;
 let worldMap = null;
 let b64Data = null;
 let progress = null;
 let submitBtn = null;
 let nameInput = null;
-const TABS = { edit: 'Floorplan Editor', map: 'Map Editor' };
+const TABS = { edit: 'Floorplan Editor', map: 'Map Editor', misc: 'Additional Parameters' };
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/web'];
 const ENDPOINT = 'http://127.0.0.1:8000/api/maps';
 
@@ -25,6 +26,7 @@ function loadComponent(name) {
 loadComponent('floorplan-container');
 loadComponent('world-map');
 loadComponent('floorplan-editor');
+loadComponent('floorplan-viewer');
 loadComponent('tab-container');
 
 
@@ -47,10 +49,14 @@ function submit() {
         const { lng, lat } = globalAnchors[i];
         anchors.push({ x: x, y: y, lng: lng, lat: lat });
     }
+
     const payload = floorplanEditor.toJSON();
     payload.anchors = anchors;
     payload.floorplan.data = b64Data;
     payload.name = nameInput.value;
+    payload.zmin = parseFloat(document.getElementById('zmin').value);
+    payload.zmax = parseFloat(document.getElementById('zmax').value);
+
     const xhr = new XMLHttpRequest();
     xhr.open('POST', ENDPOINT);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -64,10 +70,12 @@ function submit() {
             alert('An error occurred');
         }
     });
+
     xhr.addEventListener('error', () => {
         resetProgress();
         alert('An error occurred');
     });
+
     xhr.send(JSON.stringify(payload));
 }
 
@@ -79,6 +87,27 @@ function resetProgress() {
     submitBtn.disabled = false;
 }
 
+// Create a single input field
+function createField(id, description, suffix) {
+  const field = createElement('span', 'field');
+  const label = createElement('label', null, { for_: id }, description);
+  field.appendChild(label);
+  const input = createElement('input', null, { type: "number", id, step: .25, min: 0,
+                                               required: 'required' });
+  field.appendChild(input);
+  const suffixSpan = createElement('span', 'suffix', null, suffix);
+  field.appendChild(suffixSpan);
+  return field;
+}
+
+// Get an input status
+function getStatus(e) {
+    if (e.value === '')
+        return 1;
+    if (e.checkValidity())
+        return 0;
+    return 2;
+}
 
 // Create the application
 function createApp() {
@@ -89,6 +118,7 @@ function createApp() {
     progress = createElement('div', 'progress');
     app.appendChild(progress);
     app.appendChild(createElement('div', 'pane mask'));
+
     const panes = {};
     for (const [target, title] of Object.entries(TABS)) {
         const pane = createElement('div', 'pane', { id: target });
@@ -96,13 +126,14 @@ function createApp() {
         app.appendChild(pane);
         tabContainer.appendChild(createElement('div', 'tab', { dataTarget: target }, title));
     }
+
     const cancelBtn = createElement('button', 'right', null, 'Cancel');
     cancelBtn.addEventListener('click', deleteApp);
     tabContainer.appendChild(cancelBtn);
     submitBtn = createElement('button', 'right submit', { disabled: 'disabled' }, 'Submit');
     submitBtn.addEventListener('click', submit);
     tabContainer.appendChild(submitBtn);
-    nameInput = createElement('input', 'right', { placeholder: 'Project name',
+    nameInput = createElement('input', 'right', { placeholder: 'Project name', type: 'text',
                                                   required: 'required' });
     nameInput.addEventListener('input', () => {
         nameInput.dispatchEvent(new Event('statuschange', { bubbles: true }));
@@ -110,15 +141,50 @@ function createApp() {
     tabContainer.appendChild(nameInput);
     floorplanEditor = createElement('floorplan-editor', null, { status: 1 });
     panes['edit'].appendChild(floorplanEditor);
-    const panel = createElement('div', 'left-panel');
+
+    const mapPanel = createElement('div', 'left-panel');
     floorplanContainer = createElement('floorplan-container', null, { status: 1 });
-    panel.appendChild(floorplanContainer);
-    panel.appendChild(createElement('button', 'next', { id: 'place' }, 'Place in current view'));
-    panel.appendChild(createElement('button', 'previous', { id: 'unplace', disabled: 'disabled' },
-                                    'Remove from the map'));
-    panes['map'].appendChild(panel);
+    mapPanel.appendChild(floorplanContainer);
+    mapPanel.appendChild(createElement('button', 'next', { id: 'place' }, 'Place in current view'));
+    mapPanel.appendChild(createElement('button', 'previous',
+                                       { id: 'unplace', disabled: 'disabled' },
+                                       'Remove from the map'));
+    panes['map'].appendChild(mapPanel);
     worldMap = createElement('world-map');
     panes['map'].appendChild(worldMap);
+
+    const miscPanel = createElement('div', 'top-panel');
+    miscPanel.appendChild(createField('zmin', 'Floor altitude', 'm'));
+    miscPanel.appendChild(createField('zmax', 'Ceiling altitude', 'm'));
+    miscPanel.appendChild(createField('height', 'Height', 'm'));
+    panes['misc'].appendChild(miscPanel);
+    floorplanViewer = createElement('floorplan-viewer');
+    panes['misc'].appendChild(floorplanViewer);
+    const zmin = document.getElementById('zmin');
+    const zmax = document.getElementById('zmax');
+    const height = document.getElementById('height');
+
+    function updateStatus() {
+        floorplanViewer.setAttribute('status', Math.max(getStatus(zmin), getStatus(zmax),
+                                                        getStatus(height)));
+        floorplanViewer.setAttribute('wall-height', parseFloat(height.value));
+        floorplanViewer.refresh?.();
+    }
+
+    function updateHeight() {
+        height.disabled = !zmin.checkValidity();
+        height.value = parseFloat(zmax.value) - parseFloat(zmin.value);
+        updateStatus();
+    }
+
+    zmin.addEventListener('change', updateHeight);
+    zmax.addEventListener('change', updateHeight);
+    height.addEventListener('change', e => {
+        zmax.value = parseFloat(e.target.value) + parseFloat(zmin.value);
+        updateStatus();
+    });
+
+    updateHeight();
 }
 
 
@@ -129,12 +195,14 @@ function loadFloorplan(e) {
         alert('Invalid file. Please select a supported image type (JPEG, PNG or WebP).')
         return;
     }
+
     const reader = new FileReader();
     reader.addEventListener('load', () => b64Data = reader.result);
     reader.readAsDataURL(file);
     const url = URL.createObjectURL(file);
     floorplanContainer.setAttribute('src', url);
     floorplanEditor.setAttribute('src', url);
+    floorplanViewer.setAttribute('src', url);
     modal.remove();
     document.body.classList.remove('modal-open');
 }
