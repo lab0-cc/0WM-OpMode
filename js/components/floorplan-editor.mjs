@@ -700,10 +700,9 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
 
     // Snap the mouse cursor so that there is a 45×n°-angle between it and the previous anchor
     #angleSnap(source) {
-        const delta = source.to(this.#cursor);
-        const snappedAngle = new Angle2(Math.round(delta.angle().radians() / (Math.PI/4))
-                                        * (Math.PI/4));
-        return source.plus(new Vector2(delta.norm(), 0).rotated(snappedAngle));
+        const snap = new Angle2(Math.round(source.to(this.#cursor).angle().radians() / (Math.PI/4))
+                                * (Math.PI/4));
+        return new Ray2(source, new Vector2(1, 0).rotated(snap)).project(this.#cursor);
     }
 
     // Return serialized shapes
