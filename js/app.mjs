@@ -15,7 +15,6 @@ let submitBtn = null;
 let nameInput = null;
 const TABS = { edit: 'Floorplan Editor', map: 'Map Editor', misc: 'Additional Parameters' };
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/web'];
-const ENDPOINT = 'http://127.0.0.1:8000/api/maps';
 
 
 // Import component modules
@@ -58,7 +57,7 @@ function submit() {
     payload.zmax = parseFloat(document.getElementById('zmax').value);
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', ENDPOINT);
+    xhr.open('POST', `${window.apiURL}/maps`);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.upload.addEventListener('progress', e => progress.style.width = `${100 * e.loaded / e.total}%`);
     xhr.addEventListener('load', () => {
@@ -226,4 +225,7 @@ function openModal() {
     document.body.classList.add('modal-open');
 }
 
-openModal();
+fetch('/config.json').then(r => r.json().then(data => {
+    window.apiURL = data.api;
+    openModal();
+}));

@@ -8,8 +8,6 @@ import '/js/leaflet.js';
 import '/js/leaflet.imageoverlay.rotated.js';
 
 const AVERAGE_EARTH_RADIUS = 6_371_008.771
-const SERVER = 'http://127.0.0.1:8000';
-const ENDPOINT = `${SERVER}/api/maps`;
 
 // Compute a degree cosinus
 function dcos(a) {
@@ -71,13 +69,13 @@ class WorldMap extends Stylable(HTMLElement) {
         this.#overlay = null;
         new ResizeObserver(() => this.#map.invalidateSize()).observe(mapDiv);
 
-        fetch(ENDPOINT).then(response => {
+        fetch(`${window.apiURL}/maps`).then(response => {
             if (!response.ok)
                 throw new Error(`Failed to load maps (${response.status})`);
             return response.json();
         }).then(ids => {
             ids.forEach(id => {
-                fetch(`${ENDPOINT}/${id}`).then(response => {
+                fetch(`${window.apiURL}/maps/${id}`).then(response => {
                     if (!response.ok)
                         throw new Error(`Failed to load map ${id} (${response.status})`);
                     return response.json();
@@ -89,7 +87,7 @@ class WorldMap extends Stylable(HTMLElement) {
                         dstAnchors.push(new Point2(anchor.lng, anchor.lat));
                     }
                     const srcRect = new Point2(data.width, data.height);
-                    this.updateOverlay(srcAnchors, srcRect, `${SERVER}/${data.path}`, dstAnchors);
+                    this.updateOverlay(srcAnchors, srcRect, `${window.apiURL}/${data.path}`, dstAnchors);
                     this.#overlay = null;
                 }).catch(err => {
                     alert(err);
