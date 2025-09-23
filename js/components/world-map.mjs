@@ -41,9 +41,10 @@ class WorldMap extends Stylable(HTMLElement) {
 
         this.#currentLayer = L.tileLayer(LAYERS.osm.layer, {
             minZoom: 0,
-            maxZoom: 19,
+            maxZoom: 20,
             tileSize: 256,
-            attribution: LAYERS.osm.attribution
+            attribution: LAYERS.osm.attribution,
+            maxNativeZoom: LAYERS.osm.maxZoom
         });
         this.#currentLayer.addTo(this.#map);
 
@@ -56,9 +57,10 @@ class WorldMap extends Stylable(HTMLElement) {
             const layer = LAYERS[e.target.value];
             this.#currentLayer = L.tileLayer(layer.layer, {
                 minZoom: 0,
-                maxZoom: 19,
+                maxZoom: 20,
                 tileSize: 256,
-                attribution: layer.attribution
+                attribution: layer.attribution,
+                maxNativeZoom: layer.maxZoom
             });
             this.#currentLayer.addTo(this.#map);
         });
