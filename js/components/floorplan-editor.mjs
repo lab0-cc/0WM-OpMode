@@ -712,8 +712,16 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
 
     // Return serialized data
     toJSON() {
+        const structure = [];
+        const walls = [];
+        for (const shape of this.#shapes) {
+            if (shape instanceof Polygon2)
+                structure.push(shape.toJSON());
+            else
+                walls.push(shape.toJSON());
+        }
         return { floorplan: { height: this.#img.naturalHeight, width: this.#img.naturalWidth },
-                 shapes: this.shapes() };
+                 structure, walls };
     }
 }
 
