@@ -1,6 +1,6 @@
 // This module implements a 3D floorplan viewer
 
-import { Angle2, Point2, Point3, Vector2 } from '/js/linalg.mjs';
+import { Angle2, Matrix2, Point2, Point3, Vector2 } from '/js/linalg.mjs';
 import { createElement } from '/js/util.mjs';
 import { Statusable, Stylable } from '/js/mixins.mjs';
 import { Context2D } from '/js/context2d.mjs';
@@ -101,14 +101,14 @@ class FloorplanViewer extends Statusable(Stylable(HTMLElement)) {
         const cCtr = new Vector2(this.#canvas.width / 2, this.#canvas.height / 2);
 
         const a = this.#scale * yaw.cos;
-        const b = -this.#scale * yaw.sin * pitch.sin;
-        const c = this.#scale * yaw.sin;
-        const d =  this.#scale * yaw.cos * pitch.sin;
+        const b = this.#scale * yaw.sin;
+        const c = -this.#scale * yaw.sin * pitch.sin;
+        const d = this.#scale * yaw.cos * pitch.sin;
         const e = cCtr.x - this.#scale * (iCtr.x * yaw.cos + iCtr.y * yaw.sin);
         const f = cCtr.y + this.#scale * (iCtr.x * yaw.sin - iCtr.y * yaw.cos) * pitch.sin;
 
         this.#ctx.save();
-        this.#ctx.setTransform(a, b, c, d, e, f);
+        this.#ctx.setTransform(new Matrix2(a, b, c, d), new Vector2(e, f));
         this.#ctx.drawImage(this.#img, Point2.origin);
         this.#ctx.restore();
 
