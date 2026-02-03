@@ -1,6 +1,6 @@
 // This module provides the OpMode application entrypoint. Nothing here is supposed to be exported.
 
-import { createElement } from '/js/util.mjs';
+import { createElement as E } from '/js/util.mjs';
 
 
 let modal = null;
@@ -88,15 +88,13 @@ function resetProgress() {
 
 // Create a single input field
 function createField(id, description, suffix) {
-  const field = createElement('span', 'field');
-  const label = createElement('label', null, { for_: id }, description);
-  field.appendChild(label);
-  const input = createElement('input', null, { type: "number", id, step: .25, min: 0,
-                                               required: 'required' });
-  field.appendChild(input);
-  const suffixSpan = createElement('span', 'suffix', null, suffix);
-  field.appendChild(suffixSpan);
-  return field;
+    const field = E('span', 'field');
+    field.appendElements(
+        { tag: 'label', attributes: { for_: id }, content: description },
+        { tag: 'input', attributes: { type: 'number', id, 'step': .1, min: 0, required: 'required' } },
+        { tag: 'span', className: 'suffix', content: suffix }
+    );
+    return field;
 }
 
 // Get an input status
@@ -110,55 +108,49 @@ function getStatus(e) {
 
 // Create the application
 function createApp() {
-    app = createElement('div', 'app');
-    document.body.appendChild(app);
-    const tabContainer = createElement('tab-container');
-    app.appendChild(tabContainer);
-    progress = createElement('div', 'progress');
-    app.appendChild(progress);
-    app.appendChild(createElement('div', 'pane mask'));
+    app = document.body.appendElement({ tag: 'div', className: 'app' });
+    let tabContainer;
+    [tabContainer, progress,] = app.appendElements(
+        'tab-container',
+        { tag: 'div', className: 'progress' },
+        { tag: 'div', className: 'pane mask' }
+    );
 
     const panes = {};
     for (const [target, title] of Object.entries(TABS)) {
-        const pane = createElement('div', 'pane', { id: target });
+        const pane = app.appendElement({ tag: 'div', className: 'pane', attributes: { id: target } });
         panes[target] = pane;
-        app.appendChild(pane);
-        tabContainer.appendChild(createElement('div', 'tab', { dataTarget: target }, title));
+        tabContainer.appendChild(E('div', 'tab', { dataTarget: target }, title));
     }
 
-    const cancelBtn = createElement('button', 'right', null, 'Cancel');
+    const cancelBtn = E('button', 'right', null, 'Cancel');
     cancelBtn.addEventListener('click', deleteApp);
     tabContainer.appendChild(cancelBtn);
-    submitBtn = createElement('button', 'right submit', { disabled: 'disabled' }, 'Submit');
+    submitBtn = E('button', 'right submit', { disabled: 'disabled' }, 'Submit');
     submitBtn.addEventListener('click', submit);
     tabContainer.appendChild(submitBtn);
-    nameInput = createElement('input', 'right', { placeholder: 'Project name', type: 'text',
-                                                  required: 'required' });
+    nameInput = E('input', 'right', { placeholder: 'Project name', type: 'text', required: 'required' });
     nameInput.addEventListener('input', () => {
         nameInput.dispatchEvent(new Event('statuschange', { bubbles: true }));
     });
     tabContainer.appendChild(nameInput);
-    floorplanEditor = createElement('floorplan-editor', null, { status: 1 });
+
+    floorplanEditor = E('floorplan-editor', null, { status: 1 });
     panes['edit'].appendChild(floorplanEditor);
 
-    const mapPanel = createElement('div', 'left-panel');
-    floorplanContainer = createElement('floorplan-container', null, { status: 1 });
-    mapPanel.appendChild(floorplanContainer);
-    mapPanel.appendChild(createElement('button', 'next', { id: 'place' }, 'Place in current view'));
-    mapPanel.appendChild(createElement('button', 'previous',
-                                       { id: 'unplace', disabled: 'disabled' },
-                                       'Remove from the map'));
-    panes['map'].appendChild(mapPanel);
-    worldMap = createElement('world-map');
-    panes['map'].appendChild(worldMap);
+    const mapPanel = panes['map'].appendElement({ tag: 'div', className: 'left-panel' });
+    [floorplanContainer,,] = mapPanel.appendElements(
+        { tag: 'floorplan-container', attributes: { status: 1 } },
+        { tag: 'button', className: 'next', attributes: { id: 'place' }, content: 'Place in current view' },
+        { tag: 'button', className: 'previous', attributes: { id: 'unplace', disabled: 'disabled' }, content: 'Remove from the map' }
+    );
+    worldMap = panes['map'].appendElement('world-map');
 
-    const miscPanel = createElement('div', 'top-panel');
+    const miscPanel = panes['misc'].appendElement({ tag: 'div', className: 'top-panel' });
     miscPanel.appendChild(createField('zmin', 'Floor altitude', 'm'));
     miscPanel.appendChild(createField('zmax', 'Ceiling altitude', 'm'));
     miscPanel.appendChild(createField('height', 'Height', 'm'));
-    panes['misc'].appendChild(miscPanel);
-    floorplanViewer = createElement('floorplan-viewer');
-    panes['misc'].appendChild(floorplanViewer);
+    floorplanViewer = panes['misc'].appendElement('floorplan-viewer');
     const zmin = document.getElementById('zmin');
     const zmax = document.getElementById('zmax');
     const height = document.getElementById('height');
@@ -210,16 +202,16 @@ function loadFloorplan(e) {
 // Open the intro modal
 function openModal() {
     createApp();
-    modal = createElement('div', 'modal');
-    modal.appendChild(createElement('div', 'title', null, 'Project selection'));
-    const content = createElement('div', 'content center');
-    const input = createElement('input', null, { id: 'floorplan-input', type: 'file', accept: ALLOWED_MIME.join() });
-    const newProject = createElement('label', null, { for_: 'floorplan-input' }, 'Create a new project');
-    content.appendChild(input);
-    content.appendChild(newProject);
+    modal = E('div', 'modal');
+    modal.appendElement({ tag: 'div', className: 'title', content: 'Project selection' });
+    const content = E('div', 'content center');
+    const [input,] = content.appendElements(
+        { tag: 'input', attributes: { id: 'floorplan-input', type: 'file', accept: ALLOWED_MIME.join() } },
+        { tag: 'label', attributes: { for_: 'floorplan-input' }, content: 'Create a new project' }
+    );
     input.addEventListener('change', loadFloorplan);
     content.appendChild(document.createTextNode(' or '));
-    content.appendChild(createElement('button', null, { disabled: "" }, 'Open an existing project'));
+    content.appendElement({ tag: 'button', attributes: { disabled: '' }, content: 'Open an existing project' });
     modal.appendChild(content);
     document.body.appendChild(modal);
     document.body.classList.add('modal-open');

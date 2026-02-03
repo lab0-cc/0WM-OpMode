@@ -3,7 +3,7 @@
 import { LAYERS } from '/js/components/datasources.mjs';
 import { BoundingBox2, Matrix2, Point2, Vector2 } from '/js/linalg.mjs';
 import { Stylable } from '/js/mixins.mjs';
-import { createElement } from '/js/util.mjs';
+import { createElement as E } from '/js/util.mjs';
 import '/js/leaflet.js';
 import '/js/leaflet.imageoverlay.rotated.js';
 
@@ -34,8 +34,7 @@ class WorldMap extends Stylable(HTMLElement) {
         this.addStylesheet('leaflet.css');
         this.addStylesheet('style.css');
 
-        const mapDiv = createElement('div');
-        this.appendToShadow(mapDiv);
+        const mapDiv = this.appendToShadow(E('div'));
         // Show Brest, FR, by default
         this.#map = L.map(mapDiv, { center: [48.383313, -4.497187], zoom: 14 });
 
@@ -48,9 +47,9 @@ class WorldMap extends Stylable(HTMLElement) {
         });
         this.#currentLayer.addTo(this.#map);
 
-        const layers = createElement('select');
+        const layers = E('select');
         for (const layer in LAYERS)
-            layers.appendChild(createElement('option', null, { value: layer }, LAYERS[layer].name));
+            layers.appendElement({ tag: 'option', attributes: { value: layer }, content: LAYERS[layer].name });
         this.appendToShadow(layers);
         layers.addEventListener('change', e => {
             this.#map.removeLayer(this.#currentLayer);

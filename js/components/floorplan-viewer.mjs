@@ -1,7 +1,7 @@
 // This module implements a 3D floorplan viewer
 
 import { Angle2, Matrix2, Point2, Point3, Vector2 } from '/js/linalg.mjs';
-import { createElement } from '/js/util.mjs';
+import { createElement as E } from '/js/util.mjs';
 import { Statusable, Stylable } from '/js/mixins.mjs';
 import { Context2D } from '/js/context2d.mjs';
 
@@ -22,12 +22,11 @@ class FloorplanViewer extends Statusable(Stylable(HTMLElement)) {
     constructor() {
         super();
 
-        this.#img = createElement('img', null);
+        this.#img = E('img');
         this.#img.addEventListener('load', this.#updateViewport.bind(this));
         window.addEventListener('resize', this.#updateViewport.bind(this));
 
-        this.#canvas = createElement('canvas', null, { width: 1, height: 1 });
-        this.appendToShadow(this.#canvas);
+        this.#canvas = this.appendToShadow(E('canvas', null, { width: 1, height: 1 }));
         this.#ctx = this.#canvas.getContext('2d');
         Object.setPrototypeOf(this.#ctx, Context2D.prototype);
 

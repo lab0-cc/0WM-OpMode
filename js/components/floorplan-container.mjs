@@ -2,7 +2,7 @@
 
 import { Point2, Vector2 } from '/js/linalg.mjs';
 import { Statusable, Stylable } from '/js/mixins.mjs';
-import { createElement } from '/js/util.mjs';
+import { createElement as E } from '/js/util.mjs';
 
 
 class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
@@ -20,8 +20,7 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
         super();
 
         document.floorplanContainer = this;
-        this.#img = createElement('img');
-        this.appendToShadow(this.#img);
+        this.#img = this.appendToShadow(E('img'));
 
         this.#anchorDrag = this.#_anchorDrag.bind(this);
         this.#anchorDrop = this.#_anchorDrop.bind(this);
@@ -29,9 +28,8 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
 
         this.#anchors = [];
         for (let i = 0; i < 3; i++) {
-            const anchor = createElement('div', 'anchor');
+            const anchor = this.appendToShadow(E('div', 'anchor'));
             anchor.addEventListener('mousedown', this.#anchorDrag);
-            this.appendToShadow(anchor);
             this.#anchors.push(anchor);
         }
 

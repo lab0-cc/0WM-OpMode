@@ -2,7 +2,7 @@
 
 import { Angle2, Point2, Polygon2, Ray2, Segment2, Vector2 } from '/js/linalg.mjs';
 import { Statusable, Stylable } from '/js/mixins.mjs';
-import { createElement } from '/js/util.mjs';
+import { createElement as E } from '/js/util.mjs';
 import { Context2D } from '/js/context2d.mjs';
 
 
@@ -46,17 +46,15 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         super();
 
         document.floorplanEditor = this;
-        this.#img = createElement('img', null);
+        this.#img = this.appendToShadow(E('img'));
         this.#img.addEventListener('load', this.#updateViewport.bind(this));
         window.addEventListener('resize', this.#updateViewport.bind(this));
-        this.appendToShadow(this.#img);
 
-        this.#toolbar = createElement('div', 'toolbar');
+        this.#toolbar = this.appendToShadow(E('div', 'toolbar'));
         for (const mode of ['polygon', 'line']) {
-            const div = createElement('div', 'button');
+            const div = E('div', 'button', { id: mode });
             if (mode === 'polygon')
                 div.classList.add('selected');
-            div.id = mode;
             div.addEventListener('click', () => {
                 [...this.#toolbar.children].forEach(e => e.classList.remove('selected'));
                 div.classList.add('selected');
@@ -64,10 +62,8 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
             });
             this.#toolbar.appendChild(div);
         }
-        this.appendToShadow(this.#toolbar);
 
-        this.#canvas = createElement('canvas', null, { width: 1, height: 1 });
-        this.appendToShadow(this.#canvas);
+        this.#canvas = this.appendToShadow(E('canvas', null, { width: 1, height: 1 }));
         this.#ctx = this.#canvas.getContext('2d');
         Object.setPrototypeOf(this.#ctx, Context2D.prototype);
         this.#ctx.lineWidth = LINE_WIDTH;
@@ -90,7 +86,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         document.addEventListener('keyup', this.#updateKeys.bind(this));
         this.#shapes = [];
 
-        const patCanvas = createElement('canvas', null, { width: 8, height: 8 });
+        const patCanvas = E('canvas', null, { width: 8, height: 8 });
         const patCtx = patCanvas.getContext('2d');
         patCtx.strokeStyle = '#0005';
         patCtx.moveTo(0, 4);
