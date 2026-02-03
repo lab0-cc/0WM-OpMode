@@ -189,7 +189,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
             // If we are not currently dragging it (only clicking), create a new shape at the
             // current uncorrected mouse position
             else {
-                this.#currentShape = [new Point2(e.offsetX, e.offsetY)];
+                this.#currentShape = [new Point2(e.offsetX, e.offsetY).scaled(this.#scale)];
                 this.#state = 'drawing';
             }
         }
