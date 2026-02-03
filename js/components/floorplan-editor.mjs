@@ -340,6 +340,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
 
     // Recompute what is currently below the cursor
     #recomputeHovered() {
+        this.#hoveredShape = null;
         if (this.#state === 'default') {
             // First, try to find an anchor
             this.#findHoverAnchor();
