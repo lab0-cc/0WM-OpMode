@@ -60,3 +60,156 @@ img {
   box-sizing: border-box;
   position: relative;
 }
+
+#help {
+  bottom: 5px;
+  position: absolute;
+  padding-top: 19px;
+  height: initial;
+  padding-bottom: 0;
+  border-radius: 16px 16px 16px 16px;
+  pointer-events: none;
+  cursor: help;
+}
+
+#help:hover {
+  background-color: #fff;
+}
+
+#help::before {
+  content: "?";
+  text-align: center;
+  width: 100%;
+  display: block;
+  position: absolute;
+  top: 3px;
+  left: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #888;
+}
+
+#help > * {
+  height: 22px;
+  margin-bottom: 3px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.8rem;
+  line-height: 24px;
+  padding-left: 22px;
+  text-align: center;
+  position: relative;
+  transition: all .1s ease;
+  width: 0;
+  white-space: nowrap;
+}
+
+#help.discrete {
+  overflow: hidden;
+  box-shadow: 1px 0 1px #bbb;
+}
+
+#help.discrete > * {
+  color: #0000;
+}
+
+#help > .active {
+  background: #ff8;
+}
+
+#help > .disabled {
+  opacity: .3;
+}
+
+#help > *::before {
+  text-align: center;
+  display: block;
+  transform: translateY(calc(11px - 50%));
+  font-size: 1rem;
+  position: absolute;
+  left: 3px;
+  line-height: initial;
+  color: #000;
+  pointer-events: initial;
+}
+
+#help > .expanded {
+  width: 200px;
+  box-shadow: 0 2px 5px -5px #000;
+}
+
+#lmouse::before, #rmouse::before {
+  content: "";
+  width: 0;
+  background: #0000;
+  border: 5px solid #0000;
+}
+
+#lmouse::before {
+  border-right: 8px solid #000;
+  left: 1px;
+}
+
+#rmouse::before {
+  border-left: 8px solid #000;
+  left: 8px;
+}
+
+#ctrl::before {
+  content: "⎈";
+}
+
+#help.macos > #ctrl::before {
+  content: "⌘";
+}
+
+#shift::before {
+  content: "⇧";
+}
+
+#alt::before {
+  content: "⎇";
+}
+
+#help.macos > #alt::before {
+  content: "⌥";
+}
+
+#esc::before {
+  content: "⎋";
+}
+
+#lmouse.expanded ~ #ctrl.expanded.active::after, #lmouse.expanded ~ #shift.expanded.active::after, #shift.expanded.active ~ #alt.expanded.active::after {
+  content: "";
+  position: absolute;
+  display: block;
+  width: 12px;
+  height: 32px;
+  background: linear-gradient(#fff, #ff8);
+  top: -32px;
+  right: 10px;
+  border: solid #ddd;
+  border-width: 0 1px;
+}
+
+#lmouse.expanded ~ #ctrl.expanded.active::after {
+  height: 59px;
+  top: -59px;
+}
+
+#lmouse.expanded.active ~ #ctrl.expanded.active::after, #lmouse.expanded.active ~ #shift.expanded.active::after {
+  background: #ff8;
+}
+
+#shift.expanded.active ~ #alt.expanded.active::after {
+  height: 32px;
+  top: -32px;
+  background: #ff8;
+}
+
+#lmouse.expanded ~ #shift.expanded.active ~ #ctrl.expanded.active::after, #shift.expanded.active ~ #ctrl.expanded.active ~ #alt.expanded.active::after {
+  height: 5px;
+  top: -5px;
+  background: #ff8;
+}

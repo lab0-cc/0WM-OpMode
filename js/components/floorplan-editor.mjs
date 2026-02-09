@@ -26,6 +26,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
     #hoveredShape;
     #magnetism;
     #mouse;
+    #snapSource;
     // Viewport
     #canvas;
     #ctx;
@@ -37,6 +38,8 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
     #currentShape;
     #drawingMode;
     #hatchedPattern;
+    #helpDiv;
+    #kbdIndicators;
     #shapes;
     #state;
     #statusModified;
@@ -62,6 +65,27 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
             });
             this.#toolbar.appendChild(div);
         }
+
+	this.#kbdIndicators = {};
+        this.#helpDiv = E('div', 'button', { id: 'help' });
+
+        const indicators = { lmouse: 'Left mouse button', rmouse: 'Right mouse button',
+                             shift: 'Shift key', ctrl: 'Ctrl key', alt: 'Alt key',
+                             esc: 'Escape key' }
+
+        // On macOS, display platform-specific icons and use proper descriptions
+        if (navigator.userAgentData?.platform === 'macOS' || navigator.platform === 'MacIntel'
+            || navigator.userAgent.toLowerCase().includes('macintosh')) {
+            this.#helpDiv.classList.add('macos');
+            indicators.ctrl = 'Command key';
+            indicators.alt = 'Option key';
+        }
+
+        Object.entries(indicators).forEach(([id, title]) =>
+            this.#kbdIndicators[id] = this.#helpDiv.appendElement({ tag: 'div',
+                                                                    attributes: { id, title } })
+        );
+        this.#toolbar.appendChild(this.#helpDiv);
 
         this.#canvas = this.appendToShadow(E('canvas', null, { width: 1, height: 1 }));
         this.#ctx = this.#canvas.getContext('2d');
@@ -103,22 +127,160 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#setDrawingMode('polygon');
     }
 
+    #setIndicatorHint(id, hint) {
+        this.#kbdIndicators[id].textContent = hint;
+        this.#kbdIndicators[id].classList.add('expanded');
+    }
+
+    #resetIndicatorHint(id) {
+        const indicator = this.#kbdIndicators[id];
+        indicator.textContent = '';
+        indicator.className = [...indicator.classList].filter(e => e === 'active').join(' ');
+    }
+
+    #resetIndicatorHints() {
+        Object.keys(this.#kbdIndicators).forEach(e => this.#resetIndicatorHint(e));
+    }
+
+    #canRemoveAnchor() {
+        return this.#hoveredAnchor !== -1 && this.#hoveredShape instanceof Polygon2
+               && this.#hoveredShape.points.length >= 4;
+    }
+
+    #canSwitchToAnchorInsertion() {
+        return this.#hoveredShape instanceof Polygon2 && this.#hoveredEdge !== null;
+    }
+
+    #canInsertAnchor() {
+        return this.#canSwitchToAnchorInsertion() && this.#ctrlPressed && this.#state === 'default';
+    }
+
+    #canPerformRightClick() {
+        return this.#hoveredShape !== null && !this.#canInsertAnchor();
+    }
+
+    #canPerformLeftClick() {
+        return this.#currentShape.at(-1).to(this.#cursor).norm() > this.#magnetism;
+    }
+
+    #canSwapRefAnchor() {
+        return this.#shiftPressed && this.#draggingShape instanceof Polygon2;
+    }
+
+    #updateIndicator(id, active) {
+        if (active)
+            this.#kbdIndicators[id].classList.add('active');
+        else
+            this.#kbdIndicators[id].classList.remove('active');
+    }
+
+    #disableIndicator(id) {
+        this.#kbdIndicators[id].classList.add('disabled');
+    }
+
+    #indicatorActive(id) {
+        return this.#kbdIndicators[id].classList.contains('active');
+    }
+
+    #updateIndicatorHints() {
+        switch (this.#state) {
+            case 'default':
+                if (this.#hoveredAnchor !== -1) {
+                    this.#setIndicatorHint('lmouse', 'Press: move anchor');
+                }
+                else if (this.#canInsertAnchor()) {
+                    this.#setIndicatorHint('lmouse', 'Press: insert new anchor');
+                }
+                else if (this.#draggingShape !== null) {
+                    this.#setIndicatorHint('lmouse', 'Move: move anchor');
+                }
+                else switch (this.#drawingMode) {
+                    case 'line':
+                        this.#setIndicatorHint('lmouse', 'Press: start drawing wall');
+                        break;
+                    case 'polygon':
+                        this.#setIndicatorHint('lmouse', 'Press: start drawing boundary');
+                        break;
+                }
+                if (this.#canPerformRightClick()) {
+                    if (this.#canRemoveAnchor())
+                        this.#setIndicatorHint('rmouse', 'Click: remove anchor');
+                    else switch (this.#hoveredShape.constructor) {
+                        case Segment2:
+                            this.#setIndicatorHint('rmouse', 'Click: remove wall');
+                            break;
+                        case Polygon2:
+                            this.#setIndicatorHint('rmouse', 'Click: remove boundary');
+                            break;
+                    }
+                }
+                if (this.#canSwitchToAnchorInsertion()) {
+                    if (this.#ctrlPressed)
+                        this.#setIndicatorHint('ctrl', 'Hold: stay in anchor insertion');
+                    else
+                        this.#setIndicatorHint('ctrl', 'Hold: switch to anchor insertion');
+                }
+                ['shift', 'alt', 'esc'].forEach(e => this.#disableIndicator(e));
+                break;
+            case 'drawing':
+                let prefix;
+                if (this.#indicatorActive('lmouse'))
+                    prefix = 'Release';
+                else
+                    prefix = 'Click';
+                if (this.#canPerformLeftClick()) {
+                    switch (this.#drawingMode) {
+                        case 'line':
+                            this.#setIndicatorHint('lmouse', `${prefix}: finish wall`);
+                            break;
+                        case 'polygon':
+                            if (this.#canClosePolygon)
+                                this.#setIndicatorHint('lmouse', `${prefix}: close boundary`);
+                            else
+                                this.#setIndicatorHint('lmouse', `${prefix}: add anchor`);
+                            break;
+                    }
+                }
+                this.#setIndicatorHint('shift', 'Hold: snap to 45° angles');
+                if (this.#hoveredEdge !== null)
+                    this.#setIndicatorHint('ctrl', 'Hold: snap to closest edge');
+                ['rmouse', 'alt'].forEach(e => this.#disableIndicator(e));
+                this.#setIndicatorHint('esc', 'Tap: cancel the current action');
+                break;
+            case 'dragging':
+                this.#setIndicatorHint('lmouse', 'Move: move anchor');
+                this.#disableIndicator('rmouse');
+                this.#setIndicatorHint('shift', 'Hold: snap to 45° angles');
+                if (this.#hoveredEdge !== null)
+                    this.#setIndicatorHint('ctrl', 'Hold: snap to closest edge');
+                if (this.#canSwapRefAnchor())
+                    this.#setIndicatorHint('alt', 'Hold: swap reference anchor');
+                this.#setIndicatorHint('esc', 'Tap: cancel the current action');
+                break;
+        }
+    }
+
     // Handle pointerdown events
     #pointerDown(e) {
-        this.#canvas.setPointerCapture(e.pointerId);
+        if (e.button === 0)
+            this.#updateIndicator('lmouse', true);
+        else
+            this.#updateIndicator('rmouse', true);
 
         // Only handle regular single clicks here
-        if (e.button !== 0 | e.detail > 1 | this.#currentShape.length > 0)
+        if (e.button !== 0 || e.detail > 1 || this.#currentShape.length > 0)
             return;
+
+        this.#canvas.setPointerCapture(e.pointerId);
 
         // Clicking a hovered anchor prepares that anchor to be moved
         if (this.#hoveredAnchor !== -1) {
             this.#draggingShape = this.#hoveredShape;
             this.#draggingAnchor = this.#hoveredAnchor;
         }
-        // Clicking a hovered edge while pressing ⌃ or ⌘ creates an anchor and prepares it to be
+        // Clicking a hovered edge while pressing ⎈ or ⌘ creates an anchor and prepares it to be
         // moved
-        else if (this.#hoveredEdge !== null && this.#state === 'default' && this.#ctrlPressed) {
+        else if (this.#canInsertAnchor()) {
             const index = this.#hoveredEdge.p.index + 1;
             this.#hoveredShape.insert(index, this.#hoveredEdgeProjection);
             this.#state = 'dragging';
@@ -132,8 +294,10 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         }
 
         // Clear any hovered state and redraw
+        this.#resetIndicatorHints();
         this.#resetHoveredState();
         this.#redraw();
+        this.#updateIndicatorHints();
     }
 
     // Handle pointermove events
@@ -146,10 +310,16 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
             this.#state = 'dragging';
         }
 
-        // Snap the cursor depending on which modifier keys are pressed
-        if (e instanceof MouseEvent)
+        if (e instanceof MouseEvent) {
+            if (e.clientX < 250 && e.clientY > document.body.clientHeight - 200)
+                this.#helpDiv.classList.add('discrete');
+            else
+                this.#helpDiv.classList.remove('discrete');
             this.#mouse = new Point2(e.offsetX, e.offsetY);
+        }
         this.#cursor = this.#mouse.scaled(this.#scale);
+
+        // Snap the cursor depending on which modifier keys are pressed
         this.#snap();
 
         switch (this.#state) {
@@ -165,18 +335,19 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
                 break;
         }
 
-        // Recompute the hovered state and redraw
-        this.#recomputeHovered();
-        this.#redraw();
+        // Recompute states
+        this.#recomputeAfterEvent();
     }
 
     // Handle pointerup events
     #pointerUp(e) {
-        this.#canvas.releasePointerCapture(e.pointerId);
-
         // Only handle regular clicks here
-        if (e.button !== 0)
+        if (e.button !== 0) {
+            this.#updateIndicator('rmouse', false);
             return;
+        }
+
+        this.#updateIndicator('lmouse', false);
 
         // If a shape is marked for dragging
         if (this.#draggingShape !== null) {
@@ -196,12 +367,11 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
 
         // When drawing
         else if (this.#state === 'drawing') {
-            const dist = this.#currentShape.at(-1).to(this.#cursor).norm();
             switch (this.#drawingMode) {
                 // When drawing a line, a mouseup event when the mouse is far enough from the
                 // previous anchor finishes the line
                 case 'line':
-                    if (dist > this.#magnetism) {
+                    if (this.#canPerformLeftClick()) {
                         this.#currentShape.push(this.#cursor);
                         this.#pushCurrentShape();
                     }
@@ -214,7 +384,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
                         this.#pushCurrentShape();
                     // If the mouse is far enough from the previous anchor, add an anchor at the
                     // current mouse position
-                    else if (dist > this.#magnetism)
+                    else if (this.#canPerformLeftClick())
                         this.#currentShape.push(this.#cursor);
                     break;
             }
@@ -228,19 +398,18 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
     #rightClick(e) {
         e.preventDefault();
 
-        // The right click action only works on hovered shapes
-        if (this.#hoveredShape !== null) {
+        // The right click action only works in default mode on hovered shapes when no special
+        // action is in progress
+        if (this.#state === 'default' && this.#canPerformRightClick()) {
             // If we are hovering a polygon anchor and it can be deleted, delete it
-            if (this.#hoveredAnchor !== -1 && this.#hoveredShape instanceof Polygon2
-                && this.#hoveredShape.points.length >= 4)
+            if (this.#canRemoveAnchor())
                 this.#hoveredShape.remove(this.#hoveredAnchor);
             // Else, delete the whole shape
             else
                 this.#shapes.splice(this.#shapes.indexOf(this.#hoveredShape), 1);
 
-            // Recompute the hovered state and redraw
-            this.#recomputeHovered();
-            this.#redraw();
+            // Recompute states
+            this.#recomputeAfterEvent();
         }
     }
 
@@ -250,27 +419,34 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         if (this.#drawingMode === 'polygon' && this.#currentShape.length >= 3) {
             this.#pushCurrentShape();
 
-            // Recompute the hovered state and redraw
-            this.#recomputeHovered();
-            this.#redraw();
+            // Recompute states
+            this.#recomputeAfterEvent();
         }
     }
 
     // Handle keyup events and update currently pressed keys
     #updateKeys(e) {
+        if (e.code === 'Escape')
+            this.#kbdIndicators.esc.classList.remove('active');
         this.#shiftPressed = e.shiftKey;
+        this.#updateIndicator('shift', this.#shiftPressed);
         this.#ctrlPressed = e.ctrlKey || e.metaKey;
+        this.#updateIndicator('ctrl', this.#ctrlPressed);
         this.#altPressed = e.altKey;
+        this.#updateIndicator('alt', this.#altPressed);
         if (this.#mouse !== null)
             this.#pointerMove(e);
     }
 
     // Handle keydown events
     #keyDown(e) {
-        if (e.code === 'Escape')
+        if (e.code === 'Escape') {
             this.#setDrawingMode(this.#drawingMode);
-        else
+            this.#kbdIndicators.esc.classList.add('active');
+        }
+        else {
             this.#updateKeys(e);
+        }
     }
 
     // Update viewport scaling
@@ -292,10 +468,8 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#redraw();
     }
 
-    // Snap the cursor depending on whether ⇧, ⌃/⌘, and ⎇ are pressed
+    // Snap the cursor depending on whether ⇧, ⎈/⌘, and ⎇/⌥ are pressed
     #snap() {
-        const sources = [];
-
         // Snap to the current viewport;
         if (this.#cursor.x < 0)
             this.#cursor.x = 0;
@@ -310,45 +484,45 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         if (this.#shiftPressed && (this.#state === 'dragging' || this.#state === 'drawing')) {
             if (this.#state === 'dragging') {
                 switch (this.#draggingShape.constructor) {
-                    // When dealing with closed polygons, add the anchor after the one being dragged
+                    // When dealing with closed polygons, the ray source is selected with ⎇/⌥
                     case Polygon2:
-                        const len = this.#draggingShape.points.length
-                        sources.push(this.#draggingShape.points[(this.#draggingAnchor + 1) % len]);
-                    // In all cases, add the anchor before the one being dragged
+                        const len = this.#draggingShape.points.length;
+                        if (this.#altPressed)
+                            this.#snapSource = this.#draggingShape.points[(this.#draggingAnchor + 1) % len];
+                        else
+                            this.#snapSource = this.#draggingShape.points.at(this.#draggingAnchor - 1);
+                        break;
+                    // When dealing with segments, the ray source is the anchor not being dragged
                     case Segment2:
-                        sources.push(this.#draggingShape.points.at(this.#draggingAnchor - 1));
+                        this.#snapSource = this.#draggingShape.points.at(this.#draggingAnchor - 1);
                         break;
                 }
             }
             else {
-                // If the shape is still being drawn, add the last anchor
-                sources.push(this.#currentShape.at(-1));
+                // If the shape is still being drawn, the ray source is the last anchor
+                this.#snapSource = this.#currentShape.at(-1);
             }
 
-            // Snap to the closest 45-degree angle, and select the ray source with ⎇
-            this.#cursor = this.#angleSnap(sources.at(this.#altPressed - 1));
+            // Snap to the closest 45-degree angle, and select the ray source with ⎇/⌥
+            this.#cursor = this.#angleSnap(this.#snapSource);
         }
 
-        // Snap to the closest edge if ⌃ or ⌘ are pressed
+        // Snap to the closest edge if ⎈ or ⌘ are pressed
         if (this.#ctrlPressed && (this.#state === 'dragging' || this.#state === 'drawing'))
-            this.#cursor = this.#snapToClosestEdge(this.#draggingShape, sources);
+            this.#cursor = this.#snapToClosestEdge();
     }
 
     // Recompute what is currently below the cursor
     #recomputeHovered() {
-        this.#hoveredShape = null;
-        if (this.#state === 'default') {
-            // First, try to find an anchor
-            this.#findHoverAnchor();
+        // First, try to find an anchor
+        this.#findHoverAnchor();
 
-            // If not found, try to find an edge if ⌃ or ⌘ are pressed
-            if (this.#ctrlPressed && this.#hoveredShape === null)
-                this.#findHoverEdge();
+        if (this.#hoveredShape === null)
+            this.#hoveredEdgeProjection = this.#snapToClosestEdge();
 
-            // If not found, try to find a shape
-            if (this.#hoveredShape === null)
-                this.#findHoverShape();
-        }
+        // If no edge shape is hovered, look inside our shapes
+        if (this.#hoveredShape === null)
+            this.#findHoverShape();
     }
 
     // Reset the hovered state variables
@@ -357,6 +531,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#hoveredEdge = null;
         this.#hoveredAnchor = -1;
         this.#hoveredEdgeProjection = null;
+        this.#snapSource = null;
     }
 
     // Reset the dragging state variables
@@ -369,6 +544,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
     #resetDefault() {
         this.#currentShape = [];
         this.#state = 'default';
+        this.#canClosePolygon = false;
     }
 
     // Reset intermediary states and set the drawing mode
@@ -377,8 +553,9 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         this.#resetDefault();
         this.#resetHoveredState();
         this.#resetDraggingState();
-        this.#canClosePolygon = false;
+        this.#resetIndicatorHints();
         this.#redraw();
+        this.#updateIndicatorHints();
     }
 
     // Set the canvas cursor
@@ -405,7 +582,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
             case 'drawing':
                 // Draw the current shape
                 if (this.#drawingMode === 'line') {
-                    this.#drawLine(new Segment2(this.#currentShape[0], this.#cursor), true, '#000');
+                    this.#drawLine(new Segment2(this.#currentShape[0], this.#cursor), true);
                 }
                 else if (this.#drawingMode === 'polygon') {
                     this.#drawPolygon(new Polygon2(this.#currentShape, true));
@@ -427,13 +604,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
                 this.#setCursor('grabbing');
                 break;
             case 'default':
-                if (this.#hoveredEdgeProjection === null) {
-                    if (this.#hoveredAnchor === -1)
-                        this.#setCursor('crosshair');
-                    else
-                        this.#setCursor('grab');
-                }
-                else {
+                if (this.#canInsertAnchor()) {
                     this.#setCursor('copy');
                     this.#ctx.beginPath();
                     this.#ctx.circle(this.#hoveredEdgeProjection.scaled(this.#revScale),
@@ -441,11 +612,25 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
                     this.#ctx.fillStyle = '#0828';
                     this.#ctx.fill();
                 }
+                else {
+                    if (this.#hoveredAnchor === -1)
+                        this.#setCursor('crosshair');
+                    else
+                        this.#setCursor('grab');
+                }
                 break;
         }
 
         if (!this.#statusModified)
             this.setAttribute('status', 0);
+    }
+
+    // Recompute a sane state and redraw after an event
+    #recomputeAfterEvent() {
+        this.#resetIndicatorHints();
+        this.#recomputeHovered();
+        this.#redraw();
+        this.#updateIndicatorHints();
     }
 
     // Fill the polygon mask following an inverse even-odd rule
@@ -475,28 +660,29 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         const currentlyHovered = shape === this.#hoveredShape;
         this.#ctx.lineWidth = LINE_WIDTH;
 
-        // If the whole shape is hovered, highlight it
-        if (currentlyHovered && this.#hoveredAnchor === -1
-            && (this.#hoveredEdge === null || shape instanceof Segment2))
+        // In default mode, if the whole shape is hovered, highlight it
+        if (this.#state === 'default' && currentlyHovered && this.#hoveredAnchor === -1
+            && (!this.#ctrlPressed || this.#hoveredEdge === null || shape instanceof Segment2))
             this.#ctx.lineWidth = HOVERED_LINE_WIDTH;
 
         switch (shape.constructor) {
             case Segment2:
-                this.#drawLine(shape, false, 'black');
+                this.#drawLine(shape);
                 break;
             case Polygon2:
                 this.#drawPolygon(shape);
-                if (currentlyHovered && this.#hoveredEdge !== null) {
-                    this.#ctx.beginPath();
-                    this.#ctx.lineWidth = HOVERED_LINE_WIDTH;
-                    this.#ctx.line(this.#hoveredEdge.scaled(this.#revScale));
-                    this.#ctx.stroke();
-                }
                 break;
         }
 
-        // If the shape is hovered, show its anchors and highlight the current one
-        if (currentlyHovered) {
+        if (currentlyHovered && this.#ctrlPressed && this.#hoveredEdge !== null) {
+            this.#ctx.beginPath();
+            this.#ctx.lineWidth = HOVERED_LINE_WIDTH;
+            this.#ctx.line(this.#hoveredEdge.scaled(this.#revScale));
+            this.#ctx.stroke();
+        }
+
+        // In default mode, if the shape is hovered, show its anchors and highlight the current one
+        if (this.#state === 'default' && currentlyHovered) {
             this.#ctx.fillStyle = '#fff';
             for (let i = 0; i < shape.points.length; i++) {
                 if (i === this.#hoveredAnchor)
@@ -577,7 +763,10 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
 
     // Try to find the hovered anchor
     #findHoverAnchor() {
+        this.#hoveredShape = null;
         for (const shape of this.#shapes) {
+            if (shape === this.#draggingShape)
+                continue;
             for (let i = 0; i < shape.points.length; i++) {
                 const pt = shape.points[i];
                 const d = this.#cursor.to(pt).norm();
@@ -593,44 +782,15 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
     // Try to find the hovered shape
     #findHoverShape() {
         let boundingBox = null;
-        // We iterate from back to front, prioritizing lines
+        // We iterate from back to front
         for (const shape of this.#shapes) {
-            switch (shape.constructor) {
-                case Segment2:
-                    if (shape.distance(this.#cursor) <= this.#magnetism)
-                      this.#hoveredShape = shape;
-                    break;
-                case Polygon2:
-                    const bb = shape.boundingBox();
-                    if (shape.windingNumber(this.#cursor) !== 0
-                        && (this.#hoveredShape === null
-                            || !(this.#hoveredShape instanceof Segment2))
-                        && (boundingBox === null || boundingBox.contains(bb))) {
-                        this.#hoveredShape = shape;
-                        boundingBox = bb;
-                    }
-                    break;
-            }
-        }
-    }
-
-    // Try to find the hovered edge
-    #findHoverEdge() {
-        let bestDist = this.#magnetism;
-
-        for (const shape of this.#shapes) {
-            if (!(shape instanceof Polygon2))
+            if (shape === this.#draggingShape || !(shape instanceof Polygon2))
                 continue;
-
-            for (const edge of shape.edges()) {
-                const projection = edge.project(this.#cursor, true);
-                const dist = projection.to(this.#cursor).norm();
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    this.#hoveredEdge = edge;
-                    this.#hoveredEdgeProjection = projection;
-                    this.#hoveredShape = shape;
-                }
+            const bb = shape.boundingBox();
+            if (shape.windingNumber(this.#cursor) !== 0
+                && (boundingBox === null || boundingBox.contains(bb))) {
+                this.#hoveredShape = shape;
+                boundingBox = bb;
             }
         }
     }
@@ -654,14 +814,14 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
     }
 
     // Snap the mouse cursor to the closest edge
-    #snapToClosestEdge(skipShape=null, raySources=[]) {
+    #snapToClosestEdge() {
         const sqThreshold = this.#magnetism * this.#magnetism;
         let bestSqdist = Infinity;
         let bestCandidate = this.#cursor;
 
         // Check every edge of every shape
         for (const shape of this.#shapes) {
-            if (shape === skipShape)
+            if (shape === this.#draggingShape)
                 continue;
             let edges = [];
             switch (shape.constructor) {
@@ -674,13 +834,12 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
             }
             // Find the edge closest to the cursor
             for (const edge of edges) {
-                let candidates;
-                if (raySources.length === 0)
-                    candidates = [edge.project(this.#cursor, true)];
+                let candidate;
+                if (this.#snapSource === null)
+                    candidate = edge.project(this.#cursor, true);
                 else
-                    candidates = raySources.map(p => edge.intersect(new Ray2(p, this.#cursor)))
-                                           .filter(Boolean);
-                for (const candidate of candidates) {
+                    candidate = edge.intersect(new Ray2(this.#snapSource, this.#cursor));
+                if (candidate !== null) {
                     const sqdist = this.#cursor.to(candidate).sqnorm();
                     if (sqdist < bestSqdist && sqdist <= sqThreshold) {
                         bestSqdist = sqdist;
