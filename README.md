@@ -1,8 +1,49 @@
-# 0WM OpMode
+# 0WM OpMode (Operator Mode)
 
-This repository contains the sources for the 0WM operator mode. It is purely made of static files, and thus can be served with any server you want.
+0WM OpMode is the operator dashboard for creating and preparing projects. You use it to upload floorplans, edit their boundaries and walls, georeference them on a world map, and send metadata to the [0WM Server](https://github.com/lab0-cc/0WM-Server). After setup, day-to-day surveying is mainly done in the [0WM Client](https://github.com/lab0-cc/0WM-Client).
 
-To read more about the project, please consult [its main web page](https://0wm.lab0.cc).
+## Quick Start
+
+This project consists of static HTML/JS code and does not need a build step; you must however fetch its submodules:
+
+```bash
+git clone https://github.com/lab0-cc/0WM-OpMode.git
+cd 0WM-OpMode
+git submodule update --init --recursive
+```
+
+To run a local web server exposing those files, simply run:
+
+```
+python3 -m http.server 8001
+```
+
+Finally, open `http://127.0.0.1:8001`.
+
+## Configuration
+
+The only configuration necessary for the OpMode is to make it point to the server in `config.json`. For our development environment:
+
+```json
+{
+  "api": "http://127.0.0.1:8000"
+}
+```
+
+`api` must point to the 0WM Server.
+
+## Creating a project
+
+When you create a project, upload a floorplan image (`PNG`, `JPEG`, or `WebP`). A clean top-down image works best.
+
+Use this workflow:
+
+1. Set the project name.
+2. In **Floorplan Editor**, draw the boundaries and walls.
+3. In **Map Editor**, define placement anchors on the floorplan and perform georeferencing on the world map,
+4. In **Additional Parameters**, set altitude values (`zmin`, `zmax`, `height`), with any two consistent values.
+
+On a typical development environment, our documentation uses `127.0.0.1:8000` for the server, `127.0.0.1:8001` for the OpMode, `127.0.0.1:8002` for the client, and` 127.0.0.1:8003` for the mock AP.
 
 ## Funding
 
