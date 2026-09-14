@@ -1,11 +1,8 @@
 :host {
-  width: 100%;
-  height: calc(100% - 46px);
+  height: calc(100% - 38px);
   display: block;
-  background: #ccc;
   overflow: hidden;
-  position: absolute;
-  bottom: 0;
+  background: #fff;
 }
 
 :host > canvas {

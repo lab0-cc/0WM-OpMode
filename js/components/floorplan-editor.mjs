@@ -51,7 +51,7 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         document.floorplanEditor = this;
         this.#img = this.appendToShadow(E('img'));
         this.#img.addEventListener('load', this.#updateViewport.bind(this));
-        window.addEventListener('resize', this.#updateViewport.bind(this));
+        new ResizeObserver(() => this.#updateViewport()).observe(this);
 
         this.#toolbar = this.appendToShadow(E('div', 'toolbar'));
         for (const mode of ['polygon', 'line']) {

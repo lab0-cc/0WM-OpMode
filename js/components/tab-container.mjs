@@ -13,9 +13,7 @@ class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
         super();
         this.addStylesheet('style.css');
         this.addStylesheet('components/tab-container.css');
-        this.#currentTab = null;
-        this.#tabs = [];
-        this.#inputs = [];
+        this.#reset();
         this.addHandler(e => {
             if (e.classList.contains('tab')) {
                 e.addEventListener('click', () => this.selectTab(e));
@@ -37,6 +35,14 @@ class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
         this.shadowRoot.addEventListener('statuschange', this.#refreshContainerState.bind(this));
     }
 
+    // Reset the global state
+    #reset() {
+        this.#currentTab = null;
+        this.#tabs = [];
+        this.#inputs = [];
+        this.#submitBtn = null;
+    }
+
     // Select the given tab
     selectTab(e) {
         if (this.#currentTab !== null) {
@@ -48,6 +54,14 @@ class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
         const target = document.getElementById(this.#currentTab.dataset.target);
         target.style.visibility = 'visible';
         [...target.children].forEach(e => e.refresh?.());
+    }
+
+    // Clear all the tabs
+    clearTabs() {
+        this.#reset();
+        while (this.shadowRoot.firstChild) {
+            this.shadowRoot.removeChild(this.shadowRoot.lastChild);
+        }
     }
 
     // Explore a pane and update the tab state

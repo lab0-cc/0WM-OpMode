@@ -3,7 +3,6 @@
 import { createElement as E } from '/js/util.mjs';
 
 
-let modal = null;
 let app = null;
 let floorplanContainer = null;
 let floorplanEditor = null;
@@ -13,7 +12,9 @@ let b64Data = null;
 let progress = null;
 let submitBtn = null;
 let nameInput = null;
-const TABS = { edit: 'Floorplan Editor', map: 'Map Editor', misc: 'Additional Parameters' };
+let tabContainer = null;
+const panes = {};
+const EDITION_TABS = { edit: 'Floorplan Editor', map: 'Map Editor', misc: 'Additional Parameters' };
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/web'];
 
 
@@ -27,13 +28,6 @@ loadComponent('world-map');
 loadComponent('floorplan-editor');
 loadComponent('floorplan-viewer');
 loadComponent('tab-container');
-
-
-// Delete the application and open the intro modal
-function deleteApp() {
-    app.remove();
-    openModal();
-}
 
 
 // Submit the floorplan data
@@ -63,7 +57,7 @@ function submit() {
     xhr.addEventListener('load', () => {
         resetProgress();
         if (xhr.status >= 200 && xhr.status < 300) {
-            deleteApp();
+            defaultView();
         }
         else {
             alert('An error occurred');
@@ -109,22 +103,48 @@ function getStatus(e) {
 // Create the application
 function createApp() {
     app = document.body.appendElement({ tag: 'div', className: 'app' });
-    let tabContainer;
     [tabContainer, progress,] = app.appendElements(
         'tab-container',
         { tag: 'div', className: 'progress' },
         { tag: 'div', className: 'pane mask' }
     );
+    worldMap = app.appendElement('world-map');
+    defaultView();
+}
 
-    const panes = {};
-    for (const [target, title] of Object.entries(TABS)) {
+// Clear the app’s transient data
+function resetApp() {
+    worldMap.classList.remove('editing');
+    worldMap.resetOverlay?.();
+    tabContainer.clearTabs?.();
+    for (const [name, pane] of Object.entries(panes)) {
+        pane.remove();
+        delete panes[name]
+    }
+}
+
+// Switch to default view
+function defaultView(url) {
+    resetApp();
+    const [input,] = tabContainer.appendElements(
+        { tag: 'input', attributes: { id: 'floorplan-input', type: 'file', accept: ALLOWED_MIME.join() } },
+        { tag: 'label', attributes: { for_: 'floorplan-input' }, content: 'New floorplan' }
+    );
+    input.addEventListener('change', loadFloorplan);
+}
+
+// Switch to edition view
+function editionView(url) {
+    resetApp();
+    worldMap.classList.add('editing');
+    for (const [target, title] of Object.entries(EDITION_TABS)) {
         const pane = app.appendElement({ tag: 'div', className: 'pane', attributes: { id: target } });
         panes[target] = pane;
         tabContainer.appendChild(E('div', 'tab', { dataTarget: target }, title));
     }
 
     const cancelBtn = E('button', 'right', null, 'Cancel');
-    cancelBtn.addEventListener('click', deleteApp);
+    cancelBtn.addEventListener('click', defaultView);
     tabContainer.appendChild(cancelBtn);
     submitBtn = E('button', 'right submit', { disabled: 'disabled' }, 'Submit');
     submitBtn.addEventListener('click', submit);
@@ -135,22 +155,33 @@ function createApp() {
     });
     tabContainer.appendChild(nameInput);
 
-    floorplanEditor = E('floorplan-editor', null, { status: 1 });
+    floorplanEditor = E('floorplan-editor', null, { src: url, status: 1 });
     panes['edit'].appendChild(floorplanEditor);
 
     const mapPanel = panes['map'].appendElement({ tag: 'div', className: 'left-panel' });
-    [floorplanContainer,,] = mapPanel.appendElements(
-        { tag: 'floorplan-container', attributes: { status: 1 } },
+    let place, unplace;
+    [floorplanContainer, place, unplace] = mapPanel.appendElements(
+        { tag: 'floorplan-container', attributes: { src: url, status: 1 } },
         { tag: 'button', className: 'next', attributes: { id: 'place' }, content: 'Place in current view' },
         { tag: 'button', className: 'previous', attributes: { id: 'unplace', disabled: 'disabled' }, content: 'Remove from the map' }
     );
-    worldMap = panes['map'].appendElement('world-map');
+
+    place.addEventListener('click', () => {
+        floorplanContainer.setAttribute('status', 0);
+        worldMap.placeFloorplan();
+        unplace.disabled = false;
+    });
+    unplace.addEventListener('click', () => {
+        floorplanContainer.setAttribute('status', 1);
+        worldMap.unplaceFloorplan();
+        unplace.disabled = true;
+    });
 
     const miscPanel = panes['misc'].appendElement({ tag: 'div', className: 'top-panel' });
     miscPanel.appendChild(createField('zmin', 'Floor altitude', 'm'));
     miscPanel.appendChild(createField('zmax', 'Ceiling altitude', 'm'));
     miscPanel.appendChild(createField('height', 'Height', 'm'));
-    floorplanViewer = panes['misc'].appendElement('floorplan-viewer');
+    floorplanViewer = panes['misc'].appendElement({ tag: 'floorplan-viewer', attributes: { src: url } });
     const zmin = document.getElementById('zmin');
     const zmax = document.getElementById('zmax');
     const height = document.getElementById('height');
@@ -191,33 +222,11 @@ function loadFloorplan(e) {
     reader.addEventListener('load', () => b64Data = reader.result);
     reader.readAsDataURL(file);
     const url = URL.createObjectURL(file);
-    floorplanContainer.setAttribute('src', url);
-    floorplanEditor.setAttribute('src', url);
-    floorplanViewer.setAttribute('src', url);
-    modal.remove();
-    document.body.classList.remove('modal-open');
+    editionView(url);
 }
 
-
-// Open the intro modal
-function openModal() {
-    createApp();
-    modal = E('div', 'modal');
-    modal.appendElement({ tag: 'div', className: 'title', content: 'Project selection' });
-    const content = E('div', 'content center');
-    const [input,] = content.appendElements(
-        { tag: 'input', attributes: { id: 'floorplan-input', type: 'file', accept: ALLOWED_MIME.join() } },
-        { tag: 'label', attributes: { for_: 'floorplan-input' }, content: 'Create a new project' }
-    );
-    input.addEventListener('change', loadFloorplan);
-    content.appendChild(document.createTextNode(' or '));
-    content.appendElement({ tag: 'button', attributes: { disabled: '' }, content: 'Open an existing project' });
-    modal.appendChild(content);
-    document.body.appendChild(modal);
-    document.body.classList.add('modal-open');
-}
 
 fetch('/config.json').then(r => r.json().then(data => {
     window.apiURL = data.api;
-    openModal();
+    createApp();
 }));

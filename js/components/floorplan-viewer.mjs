@@ -24,7 +24,7 @@ class FloorplanViewer extends Statusable(Stylable(HTMLElement)) {
 
         this.#img = E('img');
         this.#img.addEventListener('load', this.#updateViewport.bind(this));
-        window.addEventListener('resize', this.#updateViewport.bind(this));
+        new ResizeObserver(() => this.#updateViewport()).observe(this);
 
         this.#canvas = this.appendToShadow(E('canvas', null, { width: 1, height: 1 }));
         this.#ctx = this.#canvas.getContext('2d');

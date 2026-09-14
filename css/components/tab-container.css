@@ -1,47 +1,47 @@
 :host {
   position: absolute;
-  top: 0;
-  left: 0;
-  height: 36px;
-  width: 100%;
-  background: #eee;
+  top: 8px;
+  left: 8px;
+  height: var(--top-bar-height);
+  width: calc(100% - 16px);
   z-index: 10001;
-  border-bottom: 1px solid #ccc;
-  box-sizing: border-box;
-  padding: 0 5px;
+  padding: 4px 4px 4px 68px;
   font-size: 0.9rem;
   line-height: 36px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  box-sizing: border-box;
+  box-shadow: var(--shadow);
+  background: url(/img/0wm.svg) 12px/44px no-repeat, #fffb;
 }
 :host > .tab {
   display: inline-block;
   height: 100%;
-  padding: 0 10px;
-  box-sizing: border-box;
-  color: unset;
-  text-decoration: none;
+  padding: 0 12px;
   cursor: pointer;
-  position: relative;
+  border-radius: 16px;
+  margin-right: 4px;
 }
 :host > .tab.selected {
   background: #fff;
-  height: calc(100% + 1px);
-  border-left: 1px solid #ccc;
-  border-right: 1px solid #ccc;
   pointer-events: none;
-  margin: 0 -1px;
-  z-index: 1;
+  box-shadow: var(--shadow);
 }
 :host > .tab:not(.selected):hover {
-  background: #f8f8f8;
-}
-:host > button, :host > input {
   background: #fff;
-  top: 3px;
-  height: 28px;
-  position: relative;
 }
-:host > button {
+:host > button, :host > input, :host > input[type="file"] + label {
+  background: #fff;
+  position: relative;
+  height: 28px;
+  border-radius: 16px;
+  top: 2px;
+  right: 2px;
+}
+:host > button, :host > input[type="file"] + label {
   cursor: pointer;
+  float: left;
+  line-height: 18px;
 }
 :host > input {
   width: 200px;
@@ -54,7 +54,7 @@
 }
 :host > .right {
   float: right;
-  margin-left: 8px;
+  margin-left: 4px;
 }
 :host > button.submit:enabled {
   background: #3a4;

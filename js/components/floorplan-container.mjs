@@ -35,18 +35,7 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
 
         this.addStylesheet('components/floorplan-container.css');
         this.#img.addEventListener('load', this.#imageLoad.bind(this));
-        window.addEventListener('resize', this.#resize.bind(this));
-    }
-
-    connectedCallback() {
-        document.getElementById('place').addEventListener('click', () => {
-            this.setAttribute('status', 0);
-            document.getElementById('unplace').disabled = false;
-        });
-        document.getElementById('unplace').addEventListener('click', () => {
-            this.setAttribute('status', 1);
-            document.getElementById('unplace').disabled = true;
-        });
+        new ResizeObserver(() => this.#resize()).observe(this);
     }
 
     // Get the floorplan dimensions
@@ -62,15 +51,19 @@ class FloorplanContainer extends Statusable(Stylable(HTMLElement)) {
 
     // Handle image load events
     #imageLoad() {
+        // This part is incredibly racy, as the image can get loaded before resizing to its
+        // container’s dimensions. Therefore, we only perform scale-free operations here.
         this.#resize();
-        const fiftyPx = `${50 * this.#scale}px`;
-        const twoHundredPx = `${200 * this.#scale}px`;
-        this.#anchors[0].style.setProperty('--left', fiftyPx);
-        this.#anchors[0].style.setProperty('--top', fiftyPx);
-        this.#anchors[1].style.setProperty('--left', twoHundredPx);
-        this.#anchors[1].style.setProperty('--top', fiftyPx);
-        this.#anchors[2].style.setProperty('--left', fiftyPx);
-        this.#anchors[2].style.setProperty('--top', twoHundredPx);
+        const bb = this.#img.getBoundingClientRect();
+        const dim = Math.min(bb.width, bb.height);
+        const small = `${.2 * dim * this.#scale}px`;
+        const big = `${.7 * dim * this.#scale}px`;
+        this.#anchors[0].style.setProperty('--left', small);
+        this.#anchors[0].style.setProperty('--top', small);
+        this.#anchors[1].style.setProperty('--left', big);
+        this.#anchors[1].style.setProperty('--top', small);
+        this.#anchors[2].style.setProperty('--left', small);
+        this.#anchors[2].style.setProperty('--top', big);
     }
 
     // Handle mousedown events on anchors

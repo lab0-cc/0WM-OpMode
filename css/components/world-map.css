@@ -1,13 +1,50 @@
 :host {
   position: absolute;
   top: 0;
-  right: 0;
-  width: calc(100% - 400px);
+  left: 0;
+  width: 100%;
   height: 100%;
 }
 
 :host > div {
   height: 100%;
+}
+
+:host .leaflet-top {
+  top: calc(var(--top-bar-height) + 16px);
+}
+
+:host .leaflet-top > .leaflet-control {
+  margin-top: 0;
+}
+
+:host .leaflet-left {
+  left: 8px;
+}
+
+:host .leaflet-left > .leaflet-control {
+  margin-left: 0;
+}
+
+:host .leaflet-bottom {
+  bottom: 8px;
+}
+
+:host .leaflet-bottom > .leaflet-control {
+  margin-bottom: 0;
+}
+
+:host .leaflet-right {
+  right: 8px;
+}
+
+:host .leaflet-right > .leaflet-control {
+  margin-right: 0;
+}
+
+:host .leaflet-control-attribution {
+  border-radius: 8px;
+  margin: 4px !important;
 }
 
 :host .leaflet-marker-pane > .anchor {
@@ -51,34 +88,116 @@
 }
 
 :host .leaflet-control-zoom {
-  border: 1px solid #0003 !important;
-  border-radius: 5px;
-}
-
-:host .leaflet-touch .leaflet-bar a:first-child {
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-}
-
-:host .leaflet-touch .leaflet-bar a:last-child {
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
+  border: 0 !important;
+  border-radius: 8px;
+  background: #fffb;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow) !important;
 }
 
 :host .leaflet-control-zoom-in, .leaflet-control-zoom-out {
   font-weight: normal !important;
   font-size: 24px !important;
   line-height: 26px !important;
+  background: none !important;
 }
 
 :host > select {
   position: absolute;
-  bottom: 10px;
-  left: 10px;
-  z-index: 10000;
-  background-color: #fffe;
+  bottom: 8px;
+  left: 8px;
+  z-index: 1000;
+  background-color: #fffb !important;
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+}
+
+:host(.editing) > select, :host(.editing) .leaflet-left {
+  left: calc(var(--left-panel-width) + 16px);
 }
 
 :host > select:hover {
   background-color: #fff;
+}
+
+:host .leaflet-image-layer {
+  user-select: none;
+  cursor: default;
+}
+
+:host(:not(.editing)) .leaflet-floorplans-pane:not(.non-interactive) div.leaflet-image-layer:hover {
+  opacity: 1 !important;
+  background: #fffb;
+  backdrop-filter: blur(8px);
+  border-radius: 10px;
+  pointer-events: all;
+  box-shadow: var(--shadow);
+  z-index: 2 !important;
+}
+
+:host .leaflet-image-layer > .options {
+  height: 24px;
+  background: #fffb;
+  position: relative;
+  visibility: hidden;
+  backdrop-filter: blur(8px);
+}
+
+:host(:not(.editing)) .leaflet-image-layer:hover > .options {
+  visibility: visible;
+}
+
+:host .leaflet-image-layer {
+  overflow: hidden;
+}
+
+:host .leaflet-image-layer:hover > .options > .delete {
+  width: 14px;
+  height: 14px;
+  background: #666;
+  right: 5px;
+  position: absolute;
+  top: 5px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+:host .leaflet-image-layer > .options > .name {
+  line-height: 24px;
+  padding: 0 24px 0 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:host .leaflet-image-layer:hover > .options > .delete::before {
+  content: "";
+  width: 2px;
+  height: 10px;
+  display: block;
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+:host .leaflet-image-layer:hover > .options > .delete::after {
+  content: "";
+  width: 2px;
+  height: 10px;
+  display: block;
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  background: #fff;
+  transform: rotate(-45deg);
+}
+
+:host .leaflet-image-layer:hover > img, :host .leaflet-floorplans-pane.non-interactive .leaflet-image-layer {
+  pointer-events: none;
+}
+
+:host .leaflet-control-scale {
+  margin-bottom: 36px !important;
 }

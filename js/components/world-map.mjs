@@ -35,8 +35,22 @@ class WorldMap extends Stylable(HTMLElement) {
         this.addStylesheet('style.css');
 
         const mapDiv = this.appendToShadow(E('div'));
-        // Show Brest, FR, by default
-        this.#map = L.map(mapDiv, { center: [48.383313, -4.497187], zoom: 14 });
+        this.#map = L.map(mapDiv);
+        L.control.scale().addTo(this.#map);
+        this.#map.createPane('floorplans');
+        this.#map.on('zoomend', this.#zoom.bind(this));
+        fetch(`${window.apiURL}/maps/box`).then(response => {
+            if (!response.ok)
+                throw new Error(`Failed to load maps bounding box (${response.status})`);
+            return response.json();
+        }).then(data => {
+            // Show Brest, FR, by default
+            if (data == null)
+                this.#map.setView([48.383313, -4.497187], 14);
+            else
+                this.#map.fitBounds([[data.sw.lat, data.sw.long], [data.ne.lat, data.ne.long]], { paddingTopLeft: [200, 256], paddingBottomRight: [200, 200] });
+            this.#zoom();
+        });
 
         this.#currentLayer = L.tileLayer(LAYERS.osm.layer, {
             minZoom: 0,
@@ -69,7 +83,37 @@ class WorldMap extends Stylable(HTMLElement) {
 
         this.#overlay = null;
         new ResizeObserver(() => this.#map.invalidateSize()).observe(mapDiv);
+        this.resetOverlay();
+    }
 
+    connectedCallback() {
+        document.worldMap = this;
+    }
+
+    // Initialize the anchors on the map
+    #initAnchors() {
+        this.#anchors = [];
+        for (let i = 0; i < 3; i++) {
+            const anchor = L.marker({ lng: 0, lat: 0 }, {
+                draggable: true,
+                icon: L.divIcon({ className: 'anchor', iconSize: [24, 24], iconAnchor: [12, 12] })
+            }).addTo(this.#map);
+            anchor.on('drag', () =>
+              this.updateOverlay(document.floorplanContainer.getAnchors(),
+                                 document.floorplanContainer.getDimensions(),
+                                 document.floorplanContainer.getAttribute('src')));
+            this.#anchors.push(anchor);
+        }
+    }
+
+    // Reset the map overlay
+    resetOverlay() {
+        this.unplaceFloorplan();
+        this.#map.eachLayer(layer => {
+            if (layer instanceof L.ImageOverlay) {
+                this.#map.removeLayer(layer);
+            }
+        });
         fetch(`${window.apiURL}/maps`).then(response => {
             if (!response.ok)
                 throw new Error(`Failed to load maps (${response.status})`);
@@ -89,6 +133,17 @@ class WorldMap extends Stylable(HTMLElement) {
                     }
                     const srcRect = new Point2(data.width, data.height);
                     this.updateOverlay(srcAnchors, srcRect, `${window.apiURL}/${data.path}`, dstAnchors);
+                    const el = this.#overlay.getElement();
+                    const optionsDiv = el.appendElement({ tag: 'div', className: 'options' });
+                    optionsDiv.appendElement({ tag: 'div', className: 'name', content: data.name });
+                    const closeDiv = optionsDiv.appendElement({ tag: 'div', className: 'delete' });
+                    closeDiv.addEventListener('click', () => {
+                        fetch(`${window.apiURL}/maps/${id}`, { method: 'DELETE' }).then(response => {
+                            if (!response.ok)
+                                throw new Error(`Failed to delete map ${id} (${response.status})`);
+                            this.resetOverlay();
+                        });
+                    })
                     this.#overlay = null;
                 }).catch(err => {
                     alert(err);
@@ -99,54 +154,30 @@ class WorldMap extends Stylable(HTMLElement) {
         });
     }
 
-    connectedCallback() {
-        document.worldMap = this;
-        document.getElementById('place').addEventListener('click', this.#placeFloorplan.bind(this));
-        document.getElementById('unplace').addEventListener('click', () => {
-            this.#overlay.remove();
-            this.#overlay = null;
-            this.#anchors.forEach(e => e.remove());
-            this.#anchors = null;
-        });
-    }
-
-    // Initialize the anchors on the map
-    #initAnchors() {
-        this.#anchors = [];
-        for (let i = 0; i < 3; i++) {
-            const anchor = L.marker({ lng: 0, lat: 0 }, {
-                draggable: true,
-                icon: L.divIcon({ className: 'anchor', iconSize: [24, 24], iconAnchor: [12, 12] })
-            }).addTo(this.#map);
-            anchor.on('drag', () =>
-              this.updateOverlay(document.floorplanContainer.getAnchors(),
-                                 document.floorplanContainer.getDimensions(),
-                                 document.floorplanContainer.getAttribute('src')));
-            this.#anchors.push(anchor);
-        }
-    }
-
     // Place the floorplan on the map
-    #placeFloorplan() {
+    placeFloorplan() {
         if (this.#anchors === null)
             this.#initAnchors();
 
         const rect = this.getBoundingClientRect();
-        const mapRect = this.#map.getBounds();
-        const box = new BoundingBox2(new Point2(mapRect.getWest(), mapRect.getSouth()),
-                                     new Point2(mapRect.getEast(), mapRect.getNorth()));
+        const paddingX = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--left-panel-width')) + 8;
+        const paddingY = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--top-bar-height')) + 8;
+        const sw = this.#map.containerPointToLatLng(L.point(paddingX, rect.bottom));
+        const ne = this.#map.containerPointToLatLng(L.point(rect.right, paddingY));
+        const box = new BoundingBox2(new Point2(sw.lng, sw.lat), new Point2(ne.lng, ne.lat));
+        const width = rect.width - paddingX;
 
         // Here, we want to make it so that our box is a square in the user viewport. WGS84 can be a
         // bit tricky, as the box/viewport mapping is not constant across latitudes, so we have to
         // take that into account. We also downscale the viewport by 10%, to display a margin.
         let halfDeltaX, halfDeltaY;
-        if (rect.width > rect.height) {
-            halfDeltaX = box.width() * (.05 + .45 * (rect.width - rect.height) / rect.width);
+        if (width > rect.height) {
+            halfDeltaX = box.width() * (.05 + .45 * (width - rect.height) / width);
             halfDeltaY = .05 * box.height();
         }
         else {
             halfDeltaX = .05 * box.width();
-            halfDeltaY = box.height() * (.05 + .45 * (rect.height - rect.width) / rect.height);
+            halfDeltaY = box.height() * (.05 + .45 * (rect.height - width) / rect.height);
         }
         box.max.x -= halfDeltaX;
         box.min.x += halfDeltaX;
@@ -177,6 +208,14 @@ class WorldMap extends Stylable(HTMLElement) {
         }
         this.updateOverlay(floorplanAnchors, fpRect,
                            document.floorplanContainer.getAttribute('src'));
+    }
+
+    // Unplace the floorplan from the map
+    unplaceFloorplan() {
+        this.#overlay?.remove();
+        this.#overlay = null;
+        this.#anchors?.forEach(e => e.remove());
+        this.#anchors = null;
     }
 
     #getDstAnchors() {
@@ -212,8 +251,7 @@ class WorldMap extends Stylable(HTMLElement) {
             this.#scale = new Vector2(srcRect.x, srcRect.y).norm() / hav(corners[1], corners[2]);
 
         if (this.#overlay === null)
-            this.#overlay = L.imageOverlay.rotated(url, ...corners,
-                                                   { opacity: .7 }).addTo(this.#map);
+            this.#overlay = L.imageOverlay.rotated(url, ...corners, { interactive: true, opacity: .7, pane: 'floorplans' }).addTo(this.#map);
         else
             this.#overlay.reposition(...corners);
     }
@@ -243,6 +281,11 @@ class WorldMap extends Stylable(HTMLElement) {
     // Get an approximate pixel/meter scale
     getScale() {
         return this.#scale;
+    }
+
+    // Handle zoom events
+    #zoom() {
+        this.#map.getPane('floorplans').classList.toggle('non-interactive', this.#map.getZoom() < 15);
     }
 
     // Return serialized data
