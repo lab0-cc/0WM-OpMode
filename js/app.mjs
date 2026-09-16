@@ -145,22 +145,25 @@ export class App {
         input.addEventListener('change', this.#loadFloorplan.bind(this));
         let timer = null;
         locate.style.setProperty('--color', '#f00');
-        locate.style.animationDuration = '2s';
-        locate.addEventListener('mouseenter', () => {
+        const delay = 4;
+        locate.style.animationDuration = `${delay}s`;
+        const leave = () => {
+            locate.classList.add('started');
+            timer = setTimeout(() => {
+                this.#worldMap.unlocateFloorplans();
+                locate.classList.remove('timer');
+                locate.classList.remove('started');
+            }, delay * 1000);
+        }
+        const enter = () => {
             if (timer != null)
                 clearTimeout(timer);
             locate.classList.remove('started');
             locate.classList.add('timer');
-            this.#worldMap.classList.add('locating');
-        });
-        locate.addEventListener('mouseleave', () => {
-            locate.classList.add('started');
-            timer = setTimeout(() => {
-                this.#worldMap.classList.remove('locating');
-                locate.classList.remove('timer');
-                locate.classList.remove('started');
-            }, 2000);
-        });
+            this.#worldMap.locateFloorplans(enter, leave);
+        }
+        locate.addEventListener('mouseenter', enter);
+        locate.addEventListener('mouseleave', leave);
         resetView.addEventListener('click', () => this.#worldMap.resetView());
     }
 

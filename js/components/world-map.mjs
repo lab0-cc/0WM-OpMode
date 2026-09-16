@@ -1,8 +1,8 @@
 // This module implements a map viewer allowing to position floor plans
 
 import { LAYERS } from '/js/components/datasources.mjs';
-import { BoundingBox2, Matrix2, Point2, Vector2 } from '/js/linalg.mjs';
-import { Stylable } from '/js/mixins.mjs';
+import { BoundingBox2, Matrix2, Point2, Segment2, Vector2 } from '/js/linalg.mjs';
+import { DynamicShadow, Stylable } from '/js/mixins.mjs';
 import { createElement as E } from '/js/util.mjs';
 import '/js/leaflet.js';
 import '/js/leaflet.imageoverlay.rotated.js';
@@ -20,9 +20,10 @@ function hav(p1, p2) {
                                  (1 - dcos(p2.lng - p1.lng))) / 2)) * 2 * AVERAGE_EARTH_RADIUS;
 }
 
-class WorldMap extends Stylable(HTMLElement) {
+class WorldMap extends DynamicShadow(Stylable(HTMLElement)) {
     #anchors;
     #currentLayer;
+    #indicators;
     #map;
     #overlay;
     #overlays;
@@ -81,6 +82,7 @@ class WorldMap extends Stylable(HTMLElement) {
     }
 
     connectedCallback() {
+        super.connectedCallback();
         document.worldMap = this;
         this.#ready();
     }
@@ -314,6 +316,65 @@ class WorldMap extends Stylable(HTMLElement) {
     // Handle zoom events
     #zoom() {
         this.#map.getPane('floorplans').classList.toggle('non-interactive', this.#map.getZoom() < 16);
+    }
+
+    // Update visual indicators
+    #updateIndicators() {
+        for (const { indicator, target } of this.#indicators) {
+            const rect = target.getBoundingClientRect();
+            const n = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--top-bar-height')) + 16;
+            const s = window.innerHeight - 44;
+            const w = 46;
+            const e = window.innerWidth - 8;
+            const seg = new Segment2(new Point2(window.innerWidth / 2, window.innerHeight / 2),
+                                     new Point2(rect.left + rect.width / 2, rect.top + rect.height / 2));
+            let p = null;
+            if (seg.v.x > 0)
+                p = seg.intersect(new Segment2(new Point2(e, n), new Point2(e, s)));
+            else
+                p = seg.intersect(new Segment2(new Point2(w, n), new Point2(w, s)));
+            if (p === null) {
+                if (seg.v.y > 0)
+                    p = seg.intersect(new Segment2(new Point2(w, s), new Point2(e, s)));
+                else
+                    p = seg.intersect(new Segment2(new Point2(w, n), new Point2(e, n)));
+            }
+            if (p === null) {
+              indicator.classList.add("hidden");
+              continue;
+            }
+            const angle = Math.atan2(seg.v.y, seg.v.x);
+            indicator.style.left = `${p.x}px`;
+            indicator.style.top  = `${p.y}px`;
+            indicator.style.transform = `rotate(${angle}rad)`;
+            indicator.classList.remove("hidden");
+        }
+        if (this.classList.contains('locating'))
+            requestAnimationFrame(this.#updateIndicators.bind(this));
+    }
+
+    // Locate the floorplans on the map
+    locateFloorplans(enter, leave) {
+        if (this.classList.contains('locating'))
+            return
+        this.classList.add('locating');
+        this.#indicators = [];
+        this.#map.eachLayer(layer => {
+            if (layer instanceof L.ImageOverlay) {
+                const indicator = this.appendElement({ tag: 'div', className: 'indicator' });
+                indicator.addEventListener('click', () => this.#map.panTo(layer.getBounds().getCenter(), { animate: true, duration: .25 }));
+                indicator.addEventListener('mouseenter', enter);
+                indicator.addEventListener('mouseleave', leave);
+                this.#indicators.push({ indicator, target: layer.getElement() });
+            }
+        });
+        requestAnimationFrame(this.#updateIndicators.bind(this));
+    }
+
+    // Disable visual location of floorplans on the map
+    unlocateFloorplans() {
+        this.classList.remove('locating');
+        this.#indicators.forEach(({ indicator }) => indicator.remove());
     }
 
     // Return serialized data
