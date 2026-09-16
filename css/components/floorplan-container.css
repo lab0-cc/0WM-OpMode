@@ -10,6 +10,7 @@
   max-width: 100%;
   max-height: calc(100vh - 100px);
   display: block;
+  pointer-events: none;
 }
 
 :host > .anchor {

@@ -24,7 +24,7 @@ body, html {
 .pane > .top-panel {
   width: calc(100% - 40px);
   left: 20px;
-  padding: 4px 16px;
+  padding: 5px 16px;
   border-radius: 0 0 16px 16px;
   top: -8px;
   height: 38px;
@@ -168,4 +168,10 @@ body.sending .progress {
 }
 #edit, #misc {
   width: 100%;
+}
+
+@property --progress {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
 }

@@ -23,11 +23,17 @@ class TabContainer extends DynamicShadow(Stylable(HTMLElement)) {
                 this.#tabs.push(e);
                 this.#refreshTabState(e, document.getElementById(e.dataset.target));
             }
-            else if (e.classList.contains('submit')) {
-                this.#submitBtn = e;
-            }
-            else if (e instanceof HTMLInputElement) {
-                this.#inputs.push(e);
+            else {
+                const iterator = document.createNodeIterator(e, NodeFilter.SHOW_ELEMENT);
+                let node;
+                while ((node = iterator.nextNode())) {
+                    if (node.type == 'submit') {
+                        this.#submitBtn = node;
+                    }
+                    else if (node instanceof HTMLInputElement) {
+                        this.#inputs.push(node);
+                    }
+                }
             }
         });
 

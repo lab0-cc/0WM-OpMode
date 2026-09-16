@@ -30,7 +30,7 @@
 :host > .tab:not(.selected):hover {
   background: #fff;
 }
-:host > button, :host > input, :host > input[type="file"] + label {
+:host button, :host input, :host input[type="file"] + label {
   background: #fff;
   position: relative;
   height: 28px;
@@ -38,29 +38,55 @@
   top: 2px;
   right: 2px;
 }
-:host > button, :host > input[type="file"] + label {
+:host button, :host input[type="file"] + label {
   cursor: pointer;
   float: left;
   line-height: 18px;
 }
-:host > input {
+:host input {
   width: 200px;
 }
-:host > button:disabled {
+:host button:disabled {
   pointer-events: none;
   background: #0000;
   color: #aaa;
   border-color: #ccc;
 }
-:host > .right {
+:host .right {
   float: right;
   margin-left: 4px;
 }
-:host > button.submit:enabled {
+:host button[type="submit"]:enabled {
   background: #3a4;
   color: #fff;
   border-color: #777;
 }
+
+:host > button.timer {
+  --progress: 100%;
+  border: 2px solid transparent;
+  background-clip: padding-box, border-box;
+  background-image: linear-gradient(white), conic-gradient(var(--color) var(--progress), #0003 0);
+  line-height: 16px;
+  padding: 5px 7px;
+  background-origin: border-box;
+  transition: --progress .2s ease;
+}
+
+:host > button.timer.started {
+  animation: tick forwards linear(0, .15 12%, .25 25%, .35 38%, .5 50%, .65 62%, .75 75%, .85 88%, 1);
+}
+
+:host form {
+  line-height: 100%;
+}
+
+:host form > * {
+  vertical-align: middle;
+  display: inline;
+  float: unset !important;
+}
+
 :host > .tab.warning::before, :host > .tab.error::before {
   content: "";
   width: 10px;
@@ -74,4 +100,10 @@
 }
 :host > .tab.error::before {
   background: #f11;
+}
+
+@keyframes tick {
+  to {
+    --progress: 0%;
+  }
 }

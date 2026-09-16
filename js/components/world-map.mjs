@@ -25,10 +25,16 @@ class WorldMap extends Stylable(HTMLElement) {
     #currentLayer;
     #map;
     #overlay;
+    #overlays;
+    #ready;
     #scale;
 
     constructor() {
         super();
+
+        this.ready = new Promise(resolve => {
+            this.#ready = resolve;
+        });
 
         this.addStylesheet('components/world-map.css');
         this.addStylesheet('leaflet.css');
@@ -39,18 +45,6 @@ class WorldMap extends Stylable(HTMLElement) {
         L.control.scale().addTo(this.#map);
         this.#map.createPane('floorplans');
         this.#map.on('zoomend', this.#zoom.bind(this));
-        fetch(`${window.apiURL}/maps/box`).then(response => {
-            if (!response.ok)
-                throw new Error(`Failed to load maps bounding box (${response.status})`);
-            return response.json();
-        }).then(data => {
-            // Show Brest, FR, by default
-            if (data == null)
-                this.#map.setView([48.383313, -4.497187], 14);
-            else
-                this.#map.fitBounds([[data.sw.lat, data.sw.long], [data.ne.lat, data.ne.long]], { paddingTopLeft: [200, 256], paddingBottomRight: [200, 200] });
-            this.#zoom();
-        });
 
         this.#currentLayer = L.tileLayer(LAYERS.osm.layer, {
             minZoom: 0,
@@ -83,18 +77,20 @@ class WorldMap extends Stylable(HTMLElement) {
 
         this.#overlay = null;
         new ResizeObserver(() => this.#map.invalidateSize()).observe(mapDiv);
-        this.resetOverlay();
+        this.resetView();
     }
 
     connectedCallback() {
         document.worldMap = this;
+        this.#ready();
     }
 
     // Initialize the anchors on the map
-    #initAnchors() {
+    #initAnchors(anchors) {
         this.#anchors = [];
         for (let i = 0; i < 3; i++) {
-            const anchor = L.marker({ lng: 0, lat: 0 }, {
+            const ll = anchors === null ? { lng: 0, lat: 0 } : anchors[i];
+            const anchor = L.marker(ll, {
                 draggable: true,
                 icon: L.divIcon({ className: 'anchor', iconSize: [24, 24], iconAnchor: [12, 12] })
             }).addTo(this.#map);
@@ -114,50 +110,77 @@ class WorldMap extends Stylable(HTMLElement) {
                 this.#map.removeLayer(layer);
             }
         });
-        fetch(`${window.apiURL}/maps`).then(response => {
+        this.#overlays = new Map();
+        return fetch(`${window.apiURL}/maps`).then(response => {
             if (!response.ok)
                 throw new Error(`Failed to load maps (${response.status})`);
             return response.json();
-        }).then(ids => {
-            ids.forEach(id => {
-                fetch(`${window.apiURL}/maps/${id}`).then(response => {
-                    if (!response.ok)
-                        throw new Error(`Failed to load map ${id} (${response.status})`);
-                    return response.json();
-                }).then(data => {
-                    const srcAnchors = [];
-                    const dstAnchors = [];
-                    for (const anchor of data.anchors) {
-                        srcAnchors.push(new Point2(anchor.x, anchor.y));
-                        dstAnchors.push(new Point2(anchor.lng, anchor.lat));
-                    }
-                    const srcRect = new Point2(data.width, data.height);
-                    this.updateOverlay(srcAnchors, srcRect, `${window.apiURL}/${data.path}`, dstAnchors);
-                    const el = this.#overlay.getElement();
-                    const optionsDiv = el.appendElement({ tag: 'div', className: 'options' });
-                    optionsDiv.appendElement({ tag: 'div', className: 'name', content: data.name });
-                    const closeDiv = optionsDiv.appendElement({ tag: 'div', className: 'delete' });
-                    closeDiv.addEventListener('click', () => {
-                        fetch(`${window.apiURL}/maps/${id}`, { method: 'DELETE' }).then(response => {
-                            if (!response.ok)
-                                throw new Error(`Failed to delete map ${id} (${response.status})`);
-                            this.resetOverlay();
-                        });
-                    })
-                    this.#overlay = null;
-                }).catch(err => {
-                    alert(err);
+        }).then(ids => Promise.all(ids.map(id => {
+            return fetch(`${window.apiURL}/maps/${id}`).then(response => {
+                if (!response.ok)
+                    throw new Error(`Failed to load map ${id} (${response.status})`);
+                return response.json();
+            }).then(data => {
+                const srcAnchors = [];
+                const dstAnchors = [];
+                for (const anchor of data.anchors) {
+                    srcAnchors.push(new Point2(anchor.x, anchor.y));
+                    dstAnchors.push(new Point2(anchor.lng, anchor.lat));
+                }
+                const srcRect = new Point2(data.width, data.height);
+                this.updateOverlay(srcAnchors, srcRect, `${window.apiURL}/${data.path}`, dstAnchors);
+                this.#overlays.set(id, this.#overlay);
+                const el = this.#overlay.getElement();
+                const optionsDiv = el.appendElement({ tag: 'div', className: 'options' });
+                optionsDiv.appendElement({ tag: 'div', className: 'name', content: data.name });
+                const [editDiv, deleteDiv] = optionsDiv.appendElements(
+                    { tag: 'div', className: 'edit', attributes: { title: "Edit" } },
+                    { tag: 'div', className: 'delete', attributes: { title: "Delete" } }
+                );
+                editDiv.addEventListener('click', () => {
+                    window.app.editionView(`${window.apiURL}/${data.path}`, id, data);
                 });
+                deleteDiv.addEventListener('click', () => {
+                    fetch(`${window.apiURL}/maps/${id}`, { method: 'DELETE' }).then(response => {
+                        if (!response.ok)
+                            throw new Error(`Failed to delete map ${id} (${response.status})`);
+                        this.resetOverlay();
+                    });
+                })
+                this.#overlay = null;
+            }).catch(err => {
+                alert(err);
             });
-        }).catch(err => {
+        }))).catch(err => {
             alert(err);
         });
     }
 
+    // Reset the view and overlay
+    resetView() {
+        fetch(`${window.apiURL}/maps/box`).then(response => {
+            if (!response.ok)
+                throw new Error(`Failed to load maps bounding box (${response.status})`);
+            return response.json();
+        }).then(data => {
+            // Show Brest, FR, by default
+            if (data == null)
+                this.#map.setView([48.383313, -4.497187], 14);
+            else
+                this.#map.fitBounds([[data.sw.lat, data.sw.lng], [data.ne.lat, data.ne.lng]], { paddingTopLeft: [200, 256], paddingBottomRight: [200, 200] });
+            this.#zoom();
+        });
+    }
+
     // Place the floorplan on the map
-    placeFloorplan() {
+    placeFloorplan(anchors = null, id = null) {
         if (this.#anchors === null)
-            this.#initAnchors();
+            this.#initAnchors(anchors);
+
+        if (anchors !== null) {
+            this.#overlay = this.#overlays.get(id);
+            return;
+        }
 
         const rect = this.getBoundingClientRect();
         const paddingX = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--left-panel-width')) + 8;
@@ -251,7 +274,7 @@ class WorldMap extends Stylable(HTMLElement) {
             this.#scale = new Vector2(srcRect.x, srcRect.y).norm() / hav(corners[1], corners[2]);
 
         if (this.#overlay === null)
-            this.#overlay = L.imageOverlay.rotated(url, ...corners, { interactive: true, opacity: .7, pane: 'floorplans' }).addTo(this.#map);
+            this.#overlay = L.imageOverlay.rotated(url, ...corners, { interactive: true, opacity: dstAnchors === null ? .7 : .8, pane: 'floorplans' }).addTo(this.#map);
         else
             this.#overlay.reposition(...corners);
     }
@@ -285,12 +308,17 @@ class WorldMap extends Stylable(HTMLElement) {
 
     // Handle zoom events
     #zoom() {
-        this.#map.getPane('floorplans').classList.toggle('non-interactive', this.#map.getZoom() < 15);
+        this.#map.getPane('floorplans').classList.toggle('non-interactive', this.#map.getZoom() < 16);
     }
 
     // Return serialized data
     toJSON() {
         return this.#anchors.map(e => e.getLatLng());
+    }
+
+    // Ingest serialized data
+    ofJSON(anchors) {
+        this.#anchors.forEach((e, i) => e.setLatLng(anchors[i]));
     }
 }
 

@@ -125,7 +125,7 @@
   cursor: default;
 }
 
-:host(:not(.editing)) .leaflet-floorplans-pane:not(.non-interactive) div.leaflet-image-layer:hover {
+:host(:not(.editing):not(.locating)) .leaflet-floorplans-pane:not(.non-interactive) div.leaflet-image-layer:hover {
   opacity: 1 !important;
   background: #fffb;
   backdrop-filter: blur(8px);
@@ -143,12 +143,45 @@
   backdrop-filter: blur(8px);
 }
 
-:host(:not(.editing)) .leaflet-image-layer:hover > .options {
+:host(:not(.editing):not(.locating)) .leaflet-image-layer:hover > .options {
   visibility: visible;
 }
 
-:host .leaflet-image-layer {
+:host(:not(.locating)) .leaflet-image-layer {
   overflow: hidden;
+}
+
+:host .leaflet-image-layer > .options > .name {
+  line-height: 24px;
+  padding: 0 42px 0 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:host .leaflet-image-layer:hover > .options > .edit {
+  width: 12px;
+  height: 14px;
+  background: #ccc;
+  right: 26px;
+  position: absolute;
+  top: 5px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+:host .leaflet-image-layer:hover > .options > .edit::before {
+  content: "";
+  width: 18px;
+  height: 6px;
+  background: linear-gradient(90deg, #000 4px, #fff 0 8px,#999 0 16px, #555 0);
+  clip-path: polygon(0 50%, 8px 0, 100% 0, 100% 100%, 8px 100%);
+  border-radius: 0 2px 2px 0;
+  display: block;
+  rotate: -52deg;
+  position: relative;
+  left: 0px;
+  top: 1px;
 }
 
 :host .leaflet-image-layer:hover > .options > .delete {
@@ -160,14 +193,6 @@
   top: 5px;
   border-radius: 7px;
   cursor: pointer;
-}
-
-:host .leaflet-image-layer > .options > .name {
-  line-height: 24px;
-  padding: 0 24px 0 6px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 :host .leaflet-image-layer:hover > .options > .delete::before {
@@ -200,4 +225,37 @@
 
 :host .leaflet-control-scale {
   margin-bottom: 36px !important;
+}
+
+:host .leaflet-image-layer:before {
+  content: "";
+  display: block;
+  position: absolute;
+  border: 10px solid #f00;
+  box-sizing: border-box;
+  border-radius: 100%;
+  z-index: 1;
+  opacity: 0;
+}
+
+:host(.locating) .leaflet-image-layer:before {
+  animation: .5s ease-in-out infinite alternate locate;
+}
+
+@keyframes locate {
+  from {
+    top: -25px;
+    left: -25px;
+    width: calc(100% + 50px);
+    height: calc(100% + 50px);
+    opacity: .5;
+  }
+
+  to {
+    top: -30px;
+    left: -30px;
+    width: calc(100% + 60px);
+    height: calc(100% + 60px);
+    opacity: 1;
+  }
 }

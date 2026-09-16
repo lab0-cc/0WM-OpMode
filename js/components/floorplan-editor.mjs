@@ -879,6 +879,21 @@ class FloorplanEditor extends Statusable(Stylable(HTMLElement)) {
         return { floorplan: { height: this.#img.naturalHeight, width: this.#img.naturalWidth },
                  structure, walls };
     }
+
+    // Ingest serialized data
+    ofJSON(data) {
+        switch (data.structure[0]) {
+            case 'Polygon':
+                this.#shapes.push(Polygon2.ofJSON(data.structure[1]));
+                break;
+            case 'Multi_polygon':
+                data.structure[1].forEach(e => this.#shapes.push(Polygon2.ofJSON(e)));
+                break;
+        }
+
+        for (const wall of data.walls)
+            this.#shapes.push(new Segment2(Point2.ofJSON(wall.start), Point2.ofJSON(wall.end)));
+    }
 }
 
 
