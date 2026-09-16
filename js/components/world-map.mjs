@@ -128,26 +128,26 @@ class WorldMap extends Stylable(HTMLElement) {
                     dstAnchors.push(new Point2(anchor.lng, anchor.lat));
                 }
                 const srcRect = new Point2(data.width, data.height);
-                this.updateOverlay(srcAnchors, srcRect, `${window.apiURL}/${data.path}`, dstAnchors);
-                this.#overlays.set(id, this.#overlay);
-                const el = this.#overlay.getElement();
-                const optionsDiv = el.appendElement({ tag: 'div', className: 'options' });
-                optionsDiv.appendElement({ tag: 'div', className: 'name', content: data.name });
-                const [editDiv, deleteDiv] = optionsDiv.appendElements(
-                    { tag: 'div', className: 'edit', attributes: { title: "Edit" } },
-                    { tag: 'div', className: 'delete', attributes: { title: "Delete" } }
-                );
-                editDiv.addEventListener('click', () => {
-                    window.app.editionView(`${window.apiURL}/${data.path}`, id, data);
-                });
-                deleteDiv.addEventListener('click', () => {
-                    fetch(`${window.apiURL}/maps/${id}`, { method: 'DELETE' }).then(response => {
-                        if (!response.ok)
-                            throw new Error(`Failed to delete map ${id} (${response.status})`);
-                        this.resetOverlay();
+                return this.updateOverlay(srcAnchors, srcRect, `${window.apiURL}/${data.path}`, dstAnchors).then(el => {
+                    this.#overlays.set(id, this.#overlay);
+                    const optionsDiv = el.appendElement({ tag: 'div', className: 'options' });
+                    optionsDiv.appendElement({ tag: 'div', className: 'name', content: data.name });
+                    const [editDiv, deleteDiv] = optionsDiv.appendElements(
+                        { tag: 'div', className: 'edit', attributes: { title: "Edit" } },
+                        { tag: 'div', className: 'delete', attributes: { title: "Delete" } }
+                    );
+                    editDiv.addEventListener('click', () => {
+                        window.app.editionView(`${window.apiURL}/${data.path}`, id, data);
                     });
-                })
-                this.#overlay = null;
+                    deleteDiv.addEventListener('click', () => {
+                        fetch(`${window.apiURL}/maps/${id}`, { method: 'DELETE' }).then(response => {
+                            if (!response.ok)
+                                throw new Error(`Failed to delete map ${id} (${response.status})`);
+                            this.resetOverlay();
+                        });
+                    })
+                    this.#overlay = null;
+                });
             }).catch(err => {
                 alert(err);
             });
@@ -255,12 +255,12 @@ class WorldMap extends Stylable(HTMLElement) {
         this.#scale = null;
         const anchors = dstAnchors ?? this.#getDstAnchors();
         if (anchors.length !== 3)
-            return;
+            return Promise.reject();
 
         const transformation = this.#computeTransformation(srcAnchors, anchors);
-        if (transformation === null) {
-            return;
-        }
+        if (transformation === null)
+            return Promise.reject();
+
         const corners = [
             new Point2(0, 0),
             new Point2(srcRect.x, 0),
@@ -273,10 +273,15 @@ class WorldMap extends Stylable(HTMLElement) {
         if (dstAnchors === null)
             this.#scale = new Vector2(srcRect.x, srcRect.y).norm() / hav(corners[1], corners[2]);
 
-        if (this.#overlay === null)
-            this.#overlay = L.imageOverlay.rotated(url, ...corners, { interactive: true, opacity: dstAnchors === null ? .7 : .8, pane: 'floorplans' }).addTo(this.#map);
-        else
-            this.#overlay.reposition(...corners);
+        if (this.#overlay === null) {
+            this.#overlay = L.imageOverlay.rotated(url, ...corners, { interactive: true, opacity: dstAnchors === null ? .7 : .8, pane: 'floorplans' });
+            return new Promise(resolve => {
+                this.#overlay.once('add', e => resolve(this.#overlay.getElement()));
+                this.#overlay.addTo(this.#map);
+            });
+        }
+        this.#overlay.reposition(...corners);
+        return Promise.resolve(this.#overlay);
     }
 
     // Compute the transformation matrix
