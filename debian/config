@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+. /usr/share/debconf/confmodule
+
+db_input high 0wm/api || true
+db_go
+
+exit 0

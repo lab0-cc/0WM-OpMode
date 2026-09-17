@@ -1,0 +1,5 @@
+Template: 0wm/api
+Type: string
+Default: http://localhost:8080
+_Description: Server API URL:
+ Enter the 0WM Server API URL.

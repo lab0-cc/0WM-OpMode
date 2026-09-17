@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge)
+        rm -f /usr/share/0wm-opmode/config.json
+        rmdir --ignore-fail-on-non-empty /usr/share/0wm-opmode || true
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

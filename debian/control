@@ -1,0 +1,15 @@
+Source: 0wm-opmode
+Section: web
+Priority: optional
+Maintainer: Benjamin Somers <benjamin.somers@resel.fr>
+Rules-Requires-Root: no
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.2
+Homepage: https://0wm.lab0.cc
+
+Package: 0wm-opmode
+Architecture: all
+Depends: ${misc:Depends}, po-debconf
+Description: 0WM Operator Mode website
+ Next-generation Wi-Fi mapping solution using off-the-shelf components and open
+ standards to perform hassle-free, large-scale Wi-Fi surveys.

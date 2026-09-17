@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+. /usr/share/debconf/confmodule
+
+case "$1" in
+    configure)
+        db_get 0wm/api
+        escaped=$(printf '%s' "$RET" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        tmp="$(mktemp /usr/share/0wm-opmode/.config.json.XXXXXX)"
+        printf '{ "api": "%s" }\n' "$escaped" > "$tmp"
+        chmod 0644 "$tmp"
+        mv -f "$tmp" /usr/share/0wm-opmode/config.json
+        ;;
+esac
+
+db_stop
+
+#DEBHELPER#
+
+exit 0

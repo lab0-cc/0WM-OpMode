@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	install -d debian/0wm-opmode/usr/share/0wm-opmode
+	cp -rL css img js debian/0wm-opmode/usr/share/0wm-opmode
