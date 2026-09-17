@@ -11,3 +11,6 @@
 [submodule "ext/context2d"]
 	path = ext/context2d
 	url = https://github.com/lab0-cc/Context2D.git
+[submodule "ext/gen-changelog"]
+	path = .github/scripts/gen-changelog
+	url = https://github.com/lab0-cc/gen-changelog.git

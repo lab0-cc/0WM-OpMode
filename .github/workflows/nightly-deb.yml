@@ -1,0 +1,73 @@
+name: Nightly Debian packaging
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+jobs:
+  pre:
+    name: Check if the jobs need to be run
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          paths_ignore: '[".github/**"]'
+          do_not_skip: '["workflow_dispatch"]'
+  package-deb:
+    name: Package for ${{ matrix.target.distribution }}/${{ matrix.target.suite }} (${{ matrix.arch.os }})
+    runs-on: ${{ matrix.arch.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - { name: amd64, os: ubuntu-24.04 }
+          - { name: arm64, os: ubuntu-24.04-arm }
+        target:
+          - { distribution: debian, suite: bookworm }
+          - { distribution: debian, suite: trixie }
+          - { distribution: debian, suite: forky }
+          - { distribution: ubuntu, suite: jammy }
+          - { distribution: ubuntu, suite: noble }
+    needs: pre
+    if: needs.pre.outputs.should_skip != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Add Noble backports (amd64)
+        run: echo "deb http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse restricted" | sudo tee /etc/apt/sources.list.d/noble-backports.list
+        if: matrix.arch.os == 'ubuntu-24.04'
+      - name: Add Noble backports (arm64)
+        run: echo "deb http://ports.ubuntu.com/ubuntu-ports noble-backports main universe multiverse restricted" | sudo tee /etc/apt/sources.list.d/noble-backports.list
+        if: matrix.arch.os == 'ubuntu-24.04-arm'
+      - name: Install build tooling
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends debian-archive-keyring debootstrap git-buildpackage mmdebstrap sbuild/noble-backports schroot
+      - name: Generate debian/changelog
+        run: .github/scripts/gen-changelog/gen-changelog -d debian/${{ matrix.target.suite }} -i 2026-09-17 -p 0wm-opmode > debian/changelog
+      - name: Build package
+        run: gbp buildpackage -d ${{ matrix.target.suite }} -v
+      - name: Cleanup build directory
+        run: rm -f build/*.build{,info}
+      - name: Look for artifacts
+        id: artifacts
+        run: |
+          set -euxo pipefail
+          if [ -d "build" ]; then
+            echo "upload=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload artifacts
+        if: steps.artifacts.outputs.upload == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightly-${{ matrix.target.distribution }}-${{ matrix.target.suite }}-${{ matrix.arch.name }}
+          path: build
+          if-no-files-found: ignore
+          retention-days: 7
