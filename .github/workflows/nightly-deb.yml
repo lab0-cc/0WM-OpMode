@@ -16,14 +16,11 @@ jobs:
           paths_ignore: '[".github/**"]'
           do_not_skip: '["workflow_dispatch"]'
   package-deb:
-    name: Package for ${{ matrix.target.distribution }}/${{ matrix.target.suite }} (${{ matrix.arch.os }})
-    runs-on: ${{ matrix.arch.os }}
+    name: Package for ${{ matrix.target.distribution }}/${{ matrix.target.suite }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - { name: amd64, os: ubuntu-24.04 }
-          - { name: arm64, os: ubuntu-24.04-arm }
         target:
           - { distribution: debian, suite: bookworm }
           - { distribution: debian, suite: trixie }
@@ -39,10 +36,6 @@ jobs:
           submodules: recursive
       - name: Add Noble backports (amd64)
         run: echo "deb http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse restricted" | sudo tee /etc/apt/sources.list.d/noble-backports.list
-        if: matrix.arch.os == 'ubuntu-24.04'
-      - name: Add Noble backports (arm64)
-        run: echo "deb http://ports.ubuntu.com/ubuntu-ports noble-backports main universe multiverse restricted" | sudo tee /etc/apt/sources.list.d/noble-backports.list
-        if: matrix.arch.os == 'ubuntu-24.04-arm'
       - name: Install build tooling
         run: |
           set -euxo pipefail
@@ -67,7 +60,41 @@ jobs:
         if: steps.artifacts.outputs.upload == 'true'
         uses: actions/upload-artifact@v6
         with:
-          name: nightly-${{ matrix.target.distribution }}-${{ matrix.target.suite }}-${{ matrix.arch.name }}
+          name: ${{ matrix.target.suite }}
           path: build
           if-no-files-found: ignore
           retention-days: 7
+  post:
+    name: Release nightly build
+    needs: package-deb
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release
+          for dir in artifacts/*/; do
+            artifact="$(basename "$dir")"
+            for file in "$dir"*.deb; do
+              mv "$file" "release/$(basename "${file%.deb}")+$artifact.deb"
+            done
+          done
+      - uses: ncipollo/release-action@v1
+        with:
+          tag: nightly-deb
+          name: "Nightly Debian packages"
+          artifacts: "release/*"
+          allowUpdates: true
+          makeLatest: false
+          prerelease: true
+          removeArtifacts: true
+          body: |
+            Automated nightly build.
+
+            **Commit:** ${{ github.sha }}
+            **Run:** ${{ github.run_id }}
