@@ -5,4 +5,4 @@
 
 override_dh_auto_install:
 	install -d debian/0wm-opmode/usr/share/0wm-opmode
-	cp -rL css img js index.html debian/0wm-opmode/usr/share/0wm-opmode
+	cp -rL css fonts img js index.html debian/0wm-opmode/usr/share/0wm-opmode
