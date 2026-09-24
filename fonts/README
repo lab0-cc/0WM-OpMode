@@ -1,0 +1,3 @@
+This directory contains the Roboto font family (`Roboto-0WM-Regular.woff2`), licensed under the terms laid out in `OFL-Roboto.txt`, patched for 0WM.
+
+Roboto is patched with `pyftsubset` to only include characters within the ranges U+0000–0017F and U+2000–206F.

@@ -90,7 +90,7 @@
 :host .leaflet-control-zoom {
   border: 0 !important;
   border-radius: 8px;
-  background: #fffb;
+  background: #fffc;
   backdrop-filter: blur(8px);
   box-shadow: var(--shadow) !important;
 }
@@ -107,7 +107,7 @@
   bottom: 8px;
   left: 8px;
   z-index: 1000;
-  background-color: #fffb !important;
+  background-color: #fffc !important;
   border-radius: 8px;
   backdrop-filter: blur(8px);
 }
@@ -127,7 +127,7 @@
 
 :host(:not(.editing)) .leaflet-floorplans-pane:not(.non-interactive) div.leaflet-image-layer:hover {
   opacity: 1 !important;
-  background: #fffb;
+  background: #fffc;
   backdrop-filter: blur(8px);
   border-radius: 10px;
   pointer-events: all;
@@ -137,7 +137,7 @@
 
 :host .leaflet-image-layer > .options {
   height: 24px;
-  background: #fffb;
+  background: #fffc;
   position: relative;
   visibility: hidden;
   backdrop-filter: blur(8px);

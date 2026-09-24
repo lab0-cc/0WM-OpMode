@@ -7,12 +7,12 @@
   z-index: 10001;
   padding: 4px 4px 4px 68px;
   font-size: 0.9rem;
-  line-height: 36px;
+  line-height: 32px;
   border-radius: 20px;
   backdrop-filter: blur(8px);
   box-sizing: border-box;
   box-shadow: var(--shadow);
-  background: url(/img/0wm.svg) 12px/44px no-repeat, #fffb;
+  background: url(/img/0wm.svg) 12px/44px no-repeat, #fffc;
 }
 :host > .tab {
   display: inline-block;
