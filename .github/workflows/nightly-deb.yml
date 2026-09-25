@@ -97,8 +97,4 @@ jobs:
           makeLatest: false
           prerelease: true
           removeArtifacts: true
-          body: |
-            Automated nightly build.
-
-            **Commit:** ${{ github.sha }}
-            **Run:** ${{ github.run_id }}
+          body: Automated nightly build
