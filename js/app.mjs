@@ -148,19 +148,35 @@ export class App {
         const delay = 4;
         locate.style.animationDuration = `${delay}s`;
         const leave = () => {
-            locate.classList.add('started');
-            timer = setTimeout(() => {
-                this.#worldMap.unlocateFloorplans();
-                locate.classList.remove('timer');
-                locate.classList.remove('started');
-            }, delay * 1000);
+            if (locate.classList.contains('timer')) {
+                locate.classList.add('started');
+                timer = setTimeout(() => {
+                    this.#worldMap.unlocateFloorplans();
+                    locate.classList.remove('timer');
+                    locate.classList.remove('started');
+                }, delay * 1000);
+            }
+            else {
+                timer = setTimeout(() => {
+                    locate.classList.remove('nope');
+                    locate.style.width = '';
+                    locate.textContent = 'Locate floorplans'
+                }, 500);
+            }
         }
         const enter = () => {
             if (timer != null)
                 clearTimeout(timer);
             locate.classList.remove('started');
-            locate.classList.add('timer');
-            this.#worldMap.locateFloorplans(enter, leave);
+            if (this.#worldMap.locateFloorplans(enter, leave)) {
+                locate.classList.add('timer');
+            }
+            else {
+                locate.style.width = `${locate.offsetWidth}px`;
+                locate.classList.add('nope');
+                locate.textContent = 'No floorplan'
+                locate.style.animationDuration = '.5s';
+            }
         }
         locate.addEventListener('mouseenter', enter);
         locate.addEventListener('mouseleave', leave);

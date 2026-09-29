@@ -107,6 +107,7 @@ class WorldMap extends DynamicShadow(Stylable(HTMLElement)) {
     // Reset the map overlay
     resetOverlay() {
         this.unplaceFloorplan();
+        this.unlocateFloorplans();
         this.#map.eachLayer(layer => {
             if (layer instanceof L.ImageOverlay) {
                 this.#map.removeLayer(layer);
@@ -356,11 +357,12 @@ class WorldMap extends DynamicShadow(Stylable(HTMLElement)) {
     // Locate the floorplans on the map
     locateFloorplans(enter, leave) {
         if (this.classList.contains('locating'))
-            return
-        this.classList.add('locating');
+            return true;
         this.#indicators = [];
+        let found = false;
         this.#map.eachLayer(layer => {
             if (layer instanceof L.ImageOverlay) {
+                found = true;
                 const indicator = this.appendElement({ tag: 'div', className: 'indicator' });
                 indicator.addEventListener('click', () => this.#map.panTo(layer.getBounds().getCenter(), { animate: true, duration: .25 }));
                 indicator.addEventListener('mouseenter', enter);
@@ -368,13 +370,16 @@ class WorldMap extends DynamicShadow(Stylable(HTMLElement)) {
                 this.#indicators.push({ indicator, target: layer.getElement() });
             }
         });
+        if (found)
+            this.classList.add('locating');
         requestAnimationFrame(this.#updateIndicators.bind(this));
+        return found;
     }
 
     // Disable visual location of floorplans on the map
     unlocateFloorplans() {
         this.classList.remove('locating');
-        this.#indicators.forEach(({ indicator }) => indicator.remove());
+        this.#indicators?.forEach(({ indicator }) => indicator.remove());
     }
 
     // Return serialized data

@@ -77,6 +77,14 @@
   animation: tick forwards linear(0, .18 10%, .32 40%, .68 60%, .82 90%, 1);
 }
 
+:host > button.nope {
+  cursor: default;
+  background: #0000;
+  color: #aaa;
+  border-color: #ccc;
+  animation: nope infinite linear;
+}
+
 :host form {
   line-height: 100%;
 }
@@ -105,5 +113,14 @@
 @keyframes tick {
   to {
     --progress: 0%;
+  }
+}
+
+@keyframes nope {
+  25% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-3px);
   }
 }
