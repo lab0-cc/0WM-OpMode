@@ -101,7 +101,8 @@ img {
   padding-left: 22px;
   text-align: center;
   position: relative;
-  transition: all .1s ease;
+  transition: .1s ease;
+  transition-property: color, width;
   width: 0;
   white-space: nowrap;
 }

@@ -354,6 +354,16 @@ class WorldMap extends DynamicShadow(Stylable(HTMLElement)) {
             requestAnimationFrame(this.#updateIndicators.bind(this));
     }
 
+    // Pan to a point
+    panTo(point, options) {
+        return this.#map.panTo(point, options);
+    }
+
+    // Set the map zoom
+    setZoom(zoom, options) {
+        return this.#map.setZoom(zoom, options);
+    }
+
     // Locate the floorplans on the map
     locateFloorplans(enter, leave) {
         if (this.classList.contains('locating'))
@@ -364,7 +374,7 @@ class WorldMap extends DynamicShadow(Stylable(HTMLElement)) {
             if (layer instanceof L.ImageOverlay) {
                 found = true;
                 const indicator = this.appendElement({ tag: 'div', className: 'indicator' });
-                indicator.addEventListener('click', () => this.#map.panTo(layer.getBounds().getCenter(), { animate: true, duration: .25 }));
+                indicator.addEventListener('click', () => this.panTo(layer.getBounds().getCenter(), { animate: true, duration: .25 }));
                 indicator.addEventListener('mouseenter', enter);
                 indicator.addEventListener('mouseleave', leave);
                 this.#indicators.push({ indicator, target: layer.getElement() });

@@ -141,6 +141,7 @@
   position: relative;
   visibility: hidden;
   backdrop-filter: blur(8px);
+  border-radius: 10px 10px 0 0;
 }
 
 :host(:not(.editing)) .leaflet-image-layer:hover > .options {
