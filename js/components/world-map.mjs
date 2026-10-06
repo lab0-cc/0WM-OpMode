@@ -316,7 +316,7 @@ class WorldMap extends DynamicShadow(Stylable(HTMLElement)) {
 
     // Handle zoom events
     #zoom() {
-        this.#map.getPane('floorplans').classList.toggle('non-interactive', this.#map.getZoom() < 16);
+        this.#map.getPane('floorplans').classList.toggle('non-interactive', this.#map.getZoom() < 18);
     }
 
     // Update visual indicators
